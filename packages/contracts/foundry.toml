@@ -1,0 +1,13 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.24"
+
+[rpc_endpoints]
+world_chain_testnet = "https://worldchain-sepolia.g.alchemy.com/public"
+world_chain_mainnet = "https://worldchain-mainnet.g.alchemy.com/public"
+
+[etherscan]
+world_chain_testnet = { key = "${ETHERSCAN_API_KEY}", url = "https://worldscan.org/api" }
+world_chain_mainnet = { key = "${ETHERSCAN_API_KEY}", url = "https://worldscan.org/api" }

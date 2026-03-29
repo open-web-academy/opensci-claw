@@ -1,0 +1,222 @@
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { serve } from '@hono/node-server';
+import { HTTPFacilitatorClient } from '@x402/core/http';
+import { ExactEvmScheme } from '@x402/evm/exact/server';
+import { Network } from '@x402/core/types';
+import {
+  paymentMiddlewareFromHTTPServer,
+  x402HTTPResourceServer,
+  x402ResourceServer,
+} from '@x402/hono';
+import {
+  agentkitResourceServerExtension,
+  createAgentBookVerifier,
+  createAgentkitHooks,
+  declareAgentkitExtension,
+  InMemoryAgentKitStorage,
+} from '@worldcoin/agentkit';
+
+import {
+  WORLD_CHAIN,
+  BASE,
+  WORLD_USDC,
+  WORLD_FACILITATOR_URL,
+  PAY_TO_ADDRESS,
+  PORT,
+  PRICES,
+  FREE_TRIAL_QUERY,
+  FREE_TRIAL_FULL,
+} from './config.js';
+
+import { papers, handleQuery, handleSection, handleCitations, handleFull, handleData } from './routes/papers.js';
+import { authors } from './routes/authors.js';
+
+// ────────────────────────────────────────────────────────────────────────────
+// 1. x402 Setup: ExactEvmScheme + World Chain USDC money parser
+// ────────────────────────────────────────────────────────────────────────────
+const evmScheme = new ExactEvmScheme()
+  .registerMoneyParser(async (amount: number, network: Network) => {
+    if (network !== WORLD_CHAIN) return null;
+    return {
+      amount: String(Math.round(amount * 1e6)), // USDC has 6 decimals
+      asset: WORLD_USDC,
+      extra: { name: 'USD Coin', version: '2' },
+    };
+  });
+
+// ────────────────────────────────────────────────────────────────────────────
+// 2. Facilitator — World Chain
+// ────────────────────────────────────────────────────────────────────────────
+const facilitatorClient = new HTTPFacilitatorClient({
+  url: WORLD_FACILITATOR_URL,
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// 3. AgentKit: AgentBook verifier + in-memory storage + hooks
+// ────────────────────────────────────────────────────────────────────────────
+const agentBook = createAgentBookVerifier({ network: 'world' });
+const storage = new InMemoryAgentKitStorage();
+
+const hooksQuery = createAgentkitHooks({
+  agentBook,
+  storage,
+  mode: { type: 'free-trial', uses: FREE_TRIAL_QUERY },
+});
+
+const hooksFull = createAgentkitHooks({
+  agentBook,
+  storage,
+  mode: { type: 'free-trial', uses: FREE_TRIAL_FULL },
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// 4. x402 Resource Server
+// ────────────────────────────────────────────────────────────────────────────
+const resourceServer = new x402ResourceServer(facilitatorClient)
+  .register(WORLD_CHAIN, evmScheme)
+  .registerExtension(agentkitResourceServerExtension);
+
+// ── Payment acceptors for each price tier ──────────────────────────────────
+const makeAccepts = (price: string) => [
+  { scheme: 'exact' as const, price, network: WORLD_CHAIN, payTo: PAY_TO_ADDRESS },
+];
+
+// ── Route declarations with free-trial extensions ──────────────────────────
+const routes = {
+  // $0.01 — 3 free uses
+  'POST /papers/:id/query': {
+    accepts: makeAccepts(PRICES.query),
+    extensions: declareAgentkitExtension({
+      statement: 'Access academic paper content via RAG query',
+      mode: { type: 'free-trial' as const, uses: FREE_TRIAL_QUERY },
+    }),
+  },
+  'GET /papers/:id/section/:name': {
+    accepts: makeAccepts(PRICES.section),
+    extensions: declareAgentkitExtension({
+      statement: 'Access a specific section of an academic paper',
+      mode: { type: 'free-trial' as const, uses: FREE_TRIAL_QUERY },
+    }),
+  },
+  'GET /papers/:id/citations': {
+    accepts: makeAccepts(PRICES.citations),
+    extensions: declareAgentkitExtension({
+      statement: 'Access paper citations and reference graph',
+      mode: { type: 'free-trial' as const, uses: FREE_TRIAL_QUERY },
+    }),
+  },
+  // $0.10 — 1 free use
+  'GET /papers/:id/full': {
+    accepts: makeAccepts(PRICES.full),
+    extensions: declareAgentkitExtension({
+      statement: 'Access full text of academic paper (author receives royalty)',
+      mode: { type: 'free-trial' as const, uses: FREE_TRIAL_FULL },
+    }),
+  },
+  // $0.15 — 1 free use
+  'GET /papers/:id/data': {
+    accepts: makeAccepts(PRICES.data),
+    extensions: declareAgentkitExtension({
+      statement: 'Access paper datasets and experimental results',
+      mode: { type: 'free-trial' as const, uses: FREE_TRIAL_FULL },
+    }),
+  },
+};
+
+// ── Build the HTTP server with hooks ───────────────────────────────────────
+const httpServer = new x402HTTPResourceServer(resourceServer, routes)
+  .onProtectedRequest(hooksQuery.requestHook as any);
+
+// ────────────────────────────────────────────────────────────────────────────
+// 5. Hono App
+// ────────────────────────────────────────────────────────────────────────────
+const app = new Hono();
+
+app.use('*', cors({
+  origin: '*',
+  allowHeaders: ['Content-Type', 'Authorization', 'PAYMENT-SIGNATURE'],
+  exposeHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
+}));
+
+// ── x402 payment middleware (handles 402 challenges and payment verification)
+// ── Free routes ─────────────────────────────────────────────────────────────
+app.get('/health', (c) => c.json({ status: 'ok', service: 'scigate-server', timestamp: new Date().toISOString() }));
+
+app.route('/papers', papers);
+app.route('/authors', authors);
+
+// ── x402 payment middleware (handles 402 challenges and payment verification)
+import { HonoAdapter } from '@x402/hono';
+const manualX402Middleware = async (c: any, next: any) => {
+  const context = {
+    adapter: new HonoAdapter(c),
+    path: c.req.path,
+    method: c.req.method,
+  };
+  
+  if (!httpServer.requiresPayment(context)) {
+    return await next();
+  }
+
+  const result = await httpServer.processHTTPRequest(context);
+  if (result.type === 'payment-error') {
+    return c.json(result.response.body, result.response.status as any, result.response.headers);
+  }
+  return await next();
+};
+
+app.use('*', manualX402Middleware);
+
+// ── Free routes ─────────────────────────────────────────────────────────────
+app.get('/health', (c) => c.json({ status: 'ok', service: 'scigate-server', timestamp: new Date().toISOString() }));
+
+app.route('/papers', papers);
+app.route('/authors', authors);
+
+// ── Paid routes ─────────────────────────────────────────────────────────────
+app.post('/papers/:id/query', async (c) => {
+  const paperId = c.req.param('id');
+  let body: any;
+  try { body = await c.req.json(); } catch { return c.json({ error: 'Invalid JSON' }, 400); }
+  const result = await handleQuery(paperId, body.question ?? '');
+  if ('error' in result) return c.json(result, 400);
+  return c.json(result);
+});
+
+app.get('/papers/:id/section/:name', async (c) => {
+  const paperId = c.req.param('id');
+  const sectionName = c.req.param('name');
+  const result = await handleSection(paperId, sectionName);
+  if ('error' in result) return c.json(result, 404);
+  return c.json(result);
+});
+
+app.get('/papers/:id/citations', async (c) => {
+  const paperId = c.req.param('id');
+  return c.json(await handleCitations(paperId));
+});
+
+app.get('/papers/:id/full', async (c) => {
+  const paperId = c.req.param('id');
+  return c.json(await handleFull(paperId));
+});
+
+app.get('/papers/:id/data', async (c) => {
+  const paperId = c.req.param('id');
+  return c.json(await handleData(paperId));
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// 6. Start server
+// ────────────────────────────────────────────────────────────────────────────
+serve({ fetch: app.fetch, port: PORT }, (info) => {
+  console.log(`\n🚀 SciGate API running at http://localhost:${info.port}`);
+  console.log(`📋 Health: http://localhost:${info.port}/health`);
+  console.log(`🔒 Protected endpoints require x402 payment or AgentKit free-trial`);
+  console.log(`   POST /papers/:id/query        → ${PRICES.query} (${FREE_TRIAL_QUERY} free uses)`);
+  console.log(`   GET  /papers/:id/section/:name → ${PRICES.section} (${FREE_TRIAL_QUERY} free uses)`);
+  console.log(`   GET  /papers/:id/citations     → ${PRICES.citations} (${FREE_TRIAL_QUERY} free uses)`);
+  console.log(`   GET  /papers/:id/full          → ${PRICES.full} (${FREE_TRIAL_FULL} free use)`);
+  console.log(`   GET  /papers/:id/data          → ${PRICES.data} (${FREE_TRIAL_FULL} free use)`);
+});

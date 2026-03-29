@@ -1,0 +1,26 @@
+{
+  "name": "@scigate/server",
+  "version": "1.0.0",
+  "description": "SciGate Hono API server with x402 v2 + AgentKit",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@worldcoin/agentkit": "^0.1.5",
+    "@x402/core": "^2.8.0",
+    "@x402/evm": "^2.8.0",
+    "@x402/hono": "^2.8.0",
+    "dotenv": "^17.3.1",
+    "hono": "^4.6.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
