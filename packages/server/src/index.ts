@@ -140,13 +140,6 @@ app.use('*', cors({
 }));
 
 // ── x402 payment middleware (handles 402 challenges and payment verification)
-// ── Free routes ─────────────────────────────────────────────────────────────
-app.get('/health', (c) => c.json({ status: 'ok', service: 'scigate-server', timestamp: new Date().toISOString() }));
-
-app.route('/papers', papers);
-app.route('/authors', authors);
-
-// ── x402 payment middleware (handles 402 challenges and payment verification)
 import { HonoAdapter } from '@x402/hono';
 const manualX402Middleware = async (c: any, next: any) => {
   const context = {
@@ -169,7 +162,7 @@ const manualX402Middleware = async (c: any, next: any) => {
 app.use('*', manualX402Middleware);
 
 // ── Free routes ─────────────────────────────────────────────────────────────
-app.get('/health', (c) => c.json({ status: 'ok', service: 'scigate-server', timestamp: new Date().toISOString() }));
+app.get('/health', (c) => c.json({ status: 'ok', service: 'scigate-server', v: '2.0.1', timestamp: new Date().toISOString() }));
 
 app.route('/papers', papers);
 app.route('/authors', authors);
@@ -212,19 +205,14 @@ app.get('/papers/:id/data', async (c) => {
 // ────────────────────────────────────────────────────────────────────────────
 (async () => {
   try {
+    console.log('\n--- 🚀 SCIGATE SERVER STARTUP (V2.0.1) ---');
     console.log('⏳ Initializing x402 Resource Server...');
     await resourceServer.initialize();
     console.log('✅ x402 Resource Server initialized');
     
     serve({ fetch: app.fetch, port: PORT }, (info) => {
-      console.log(`\n🚀 SciGate API running at http://localhost:${info.port}`);
-      console.log(`📋 Health: http://localhost:${info.port}/health`);
+      console.log(`🚀 SciGate API running at http://localhost:${info.port}`);
       console.log(`🔒 Protected endpoints require x402 payment or AgentKit free-trial`);
-      console.log(`   POST /papers/:id/query        → ${PRICES.query} (${FREE_TRIAL_QUERY} free uses)`);
-      console.log(`   GET  /papers/:id/section/:name → ${PRICES.section} (${FREE_TRIAL_QUERY} free uses)`);
-      console.log(`   GET  /papers/:id/citations     → ${PRICES.citations} (${FREE_TRIAL_QUERY} free uses)`);
-      console.log(`   GET  /papers/:id/full          → ${PRICES.full} (${FREE_TRIAL_FULL} free use)`);
-      console.log(`   GET  /papers/:id/data          → ${PRICES.data} (${FREE_TRIAL_FULL} free use)`);
     });
   } catch (err) {
     console.error('❌ Failed to initialize x402 Resource Server:', err);
