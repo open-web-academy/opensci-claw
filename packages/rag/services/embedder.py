@@ -27,15 +27,19 @@ class LiteMemoryStore:
                 self.data = []
 
     def save(self):
-        """Save to JSON (excluding the raw numpy arrays)."""
-        try:
-            with open(self.path, "w", encoding="utf-8") as f:
-                json.dump(self.data, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"--- LITE-DB: Save error: {e} ---")
+        """Save to JSON in a background thread to avoid blocking."""
+        import threading
+        def _silent_save():
+            try:
+                with open(self.path, "w", encoding="utf-8") as f:
+                    json.dump(self.data, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"--- LITE-DB: Background Save error: {e} ---")
+        
+        threading.Thread(target=_silent_save, daemon=True).start()
 
     def upsert(self, ids: List[str], embeddings: List[List[float]], documents: List[str], metadatas: List[Dict[str, Any]]):
-        """Add or update chunks in memory."""
+        """Add or update chunks in memory and trigger background save."""
         for i, (id_val, emb, doc, meta) in enumerate(zip(ids, embeddings, documents, metadatas)):
             # Check if ID already exists and replace, otherwise append
             existing = next((idx for idx, item in enumerate(self.data) if item["id"] == id_val), None)
