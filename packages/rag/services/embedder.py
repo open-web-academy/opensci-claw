@@ -104,7 +104,7 @@ def _embed(texts: List[str]) -> List[List[float]]:
     """Generate embeddings via Google Gemini text-embedding-004."""
     try:
         response = genai.embed_content(
-            model="models/embedding-001",
+            model="models/text-embedding-004",
             content=texts,
             task_type="retrieval_document",
         )
