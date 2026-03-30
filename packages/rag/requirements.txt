@@ -8,4 +8,4 @@ langchain-community==0.3.14
 google-generativeai==0.8.3
 python-dotenv==1.0.1
 httpx==0.28.1
-numpy==2.2.1
+numpy<2.0.0
