@@ -210,13 +210,24 @@ app.get('/papers/:id/data', async (c) => {
 // ────────────────────────────────────────────────────────────────────────────
 // 6. Start server
 // ────────────────────────────────────────────────────────────────────────────
-serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`\n🚀 SciGate API running at http://localhost:${info.port}`);
-  console.log(`📋 Health: http://localhost:${info.port}/health`);
-  console.log(`🔒 Protected endpoints require x402 payment or AgentKit free-trial`);
-  console.log(`   POST /papers/:id/query        → ${PRICES.query} (${FREE_TRIAL_QUERY} free uses)`);
-  console.log(`   GET  /papers/:id/section/:name → ${PRICES.section} (${FREE_TRIAL_QUERY} free uses)`);
-  console.log(`   GET  /papers/:id/citations     → ${PRICES.citations} (${FREE_TRIAL_QUERY} free uses)`);
-  console.log(`   GET  /papers/:id/full          → ${PRICES.full} (${FREE_TRIAL_FULL} free use)`);
-  console.log(`   GET  /papers/:id/data          → ${PRICES.data} (${FREE_TRIAL_FULL} free use)`);
-});
+(async () => {
+  try {
+    console.log('⏳ Initializing x402 Resource Server...');
+    await resourceServer.initialize();
+    console.log('✅ x402 Resource Server initialized');
+    
+    serve({ fetch: app.fetch, port: PORT }, (info) => {
+      console.log(`\n🚀 SciGate API running at http://localhost:${info.port}`);
+      console.log(`📋 Health: http://localhost:${info.port}/health`);
+      console.log(`🔒 Protected endpoints require x402 payment or AgentKit free-trial`);
+      console.log(`   POST /papers/:id/query        → ${PRICES.query} (${FREE_TRIAL_QUERY} free uses)`);
+      console.log(`   GET  /papers/:id/section/:name → ${PRICES.section} (${FREE_TRIAL_QUERY} free uses)`);
+      console.log(`   GET  /papers/:id/citations     → ${PRICES.citations} (${FREE_TRIAL_QUERY} free uses)`);
+      console.log(`   GET  /papers/:id/full          → ${PRICES.full} (${FREE_TRIAL_FULL} free use)`);
+      console.log(`   GET  /papers/:id/data          → ${PRICES.data} (${FREE_TRIAL_FULL} free use)`);
+    });
+  } catch (err) {
+    console.error('❌ Failed to initialize x402 Resource Server:', err);
+    process.exit(1);
+  }
+})();
