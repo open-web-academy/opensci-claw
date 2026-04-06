@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MiniKit, Tokens } from '@worldcoin/minikit-js';
 
@@ -30,6 +30,30 @@ export default function ExplorePage() {
   const [needsPayment, setNeedsPayment] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [showBypassButton, setShowBypassButton] = useState(false);
+  const [paidPapers, setPaidPapers] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<'ask' | 'preview'>('ask');
+  const [previewText, setPreviewText] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Fetch preview when a paper is selected
+  useEffect(() => {
+    if (selectedPaper) {
+      const paperId = getPaperId(selectedPaper);
+      setPreviewLoading(true);
+      setPreviewText('');
+      fetch(`/api/papers/${encodeURIComponent(paperId)}/preview`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.content) {
+            setPreviewText(data.content);
+          } else {
+            setPreviewText(selectedPaper.snippet || 'No preview content available.');
+          }
+        })
+        .catch(() => setPreviewText('Failed to load preview.'))
+        .finally(() => setPreviewLoading(false));
+    }
+  }, [selectedPaper]);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -58,11 +82,15 @@ export default function ExplorePage() {
     setAnswer('');
     setError('');
     setShowBypassButton(false);
+    setActiveTab('ask'); // Switch back to ask tab to show the response
 
     try {
       const res = await fetch(`/api/papers/${encodeURIComponent(paperId)}/query`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-payment-proof': paidPapers[paperId] || ''
+        },
         body: JSON.stringify({ question }),
       });
 
@@ -132,6 +160,9 @@ export default function ExplorePage() {
         } else {
           setError('✓ Pago exitoso. Obteniendo respuesta...');
         }
+        
+        // Record the payment proof for this paperId
+        setPaidPapers(prev => ({ ...prev, [paperId]: refId }));
         
         setNeedsPayment(false);
         setTimeout(() => {
@@ -242,94 +273,135 @@ export default function ExplorePage() {
 
             {/* Query panel */}
             {selectedPaper && (
-              <div className="card" style={{ position: 'sticky', top: 100, height: 'fit-content', border: '1px solid var(--accent-indigo)', boxShadow: '0 8px 32px rgba(99, 102, 241, 0.12)' }}>
-                <div style={{ padding: '4px 0 16px 0', borderBottom: '1px solid var(--border-color)', marginBottom: 20 }}>
-                  <h3 style={{ marginBottom: 4 }}>Ask this Paper</h3>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, background: 'rgba(16,185,129,0.1)', color: 'var(--accent-emerald)', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>x402 protocol</span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>0.01 USDC/query</span>
-                  </div>
+              <div className="card" style={{ position: 'sticky', top: 100, height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--accent-indigo)', boxShadow: '0 8px 32px rgba(99, 102, 241, 0.12)', padding: 0, overflow: 'hidden' }}>
+                {/* Tabs Header */}
+                <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid var(--border-color)' }}>
+                  <button 
+                    onClick={() => setActiveTab('preview')}
+                    style={{ 
+                      flex: 1, padding: '16px', border: 'none', background: activeTab === 'preview' ? 'transparent' : 'rgba(0,0,0,0.1)',
+                      color: activeTab === 'preview' ? 'var(--accent-indigo)' : 'var(--text-muted)', 
+                      fontWeight: 600, cursor: 'pointer', borderBottom: activeTab === 'preview' ? '2px solid var(--accent-indigo)' : 'none'
+                    }}
+                  >
+                    📄 View Paper
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('ask')}
+                    style={{ 
+                      flex: 1, padding: '16px', border: 'none', background: activeTab === 'ask' ? 'transparent' : 'rgba(0,0,0,0.1)',
+                      color: activeTab === 'ask' ? 'var(--accent-emerald)' : 'var(--text-muted)', 
+                      fontWeight: 600, cursor: 'pointer', borderBottom: activeTab === 'ask' ? '2px solid var(--accent-emerald)' : 'none'
+                    }}
+                  >
+                    🧠 Ask NanoClaw
+                  </button>
                 </div>
 
-                {/* Form at the TOP */}
-                <form onSubmit={handleQuery} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <textarea
-                    className="input"
-                    value={question}
-                    onChange={(e) => { setQuestion(e.target.value); setShowBypassButton(false); }}
-                    placeholder="Escribe tu pregunta aquí..."
-                    rows={4}
-                    style={{ resize: 'none', background: 'rgba(255,255,255,0.03)' }}
-                  />
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <button type="submit" className="btn-primary" disabled={answering || !question.trim()} style={{ width: '100%' }}>
-                      {answering ? '🤔 Thinking...' : '🧠 Ask NanoClaw RAG'}
-                    </button>
-
-                    {needsPayment && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <button 
-                          className="btn-primary" 
-                          onClick={handlePayment}
-                          disabled={paymentLoading}
-                          style={{ 
-                            background: 'var(--accent-emerald)', 
-                            borderColor: 'var(--accent-emerald)',
-                            color: 'white',
-                            width: '100%'
-                          }}
-                        >
-                          {paymentLoading ? '⏳ Confirming...' : '💳 Pay $0.01 to Unlock'}
-                        </button>
-                        
-                        {showBypassButton && (
-                          <button 
-                            onClick={() => {
-                              setNeedsPayment(false);
-                              setShowBypassButton(false);
-                              handleQuery({ preventDefault: () => {} } as any);
-                            }}
-                            className="btn-secondary"
-                            style={{ width: '100%', borderColor: '#f59e0b', color: '#f59e0b', fontSize: 13 }}
-                          >
-                            ⚠️ Saltar Pago (Modo Demo)
-                          </button>
-                        )}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                  {activeTab === 'preview' ? (
+                    <div style={{ height: '100%' }}>
+                      <div style={{ marginBottom: 20 }}>
+                        <h3 style={{ marginBottom: 12, color: 'var(--text-primary)' }}>Document Digital Replica</h3>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <span style={{ fontSize: 11, background: 'rgba(99,102,241,0.1)', color: 'var(--accent-indigo)', padding: '2px 8px', borderRadius: 10 }}>Preview Mode</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Verified Content</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </form>
-
-                {error && (
-                  <div style={{
-                    marginTop: 16,
-                    padding: '12px 16px',
-                    background: 'rgba(239,68,68,0.05)',
-                    borderLeft: '3px solid #ef4444',
-                    color: '#f87171',
-                    fontSize: 13,
-                  }}>
-                    {error}
-                  </div>
-                )}
-
-                {/* Answer at the BOTTOM */}
-                {answer && (
-                  <div style={{
-                    marginTop: 24,
-                    padding: '20px',
-                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)',
-                    border: '1px solid rgba(99, 102, 241, 0.2)',
-                    borderRadius: 'var(--radius-md)',
-                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05)'
-                  }}>
-                    <div style={{ fontSize: 12, color: 'var(--accent-indigo)', fontWeight: 700, marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                      ✨ AI Insight from Pi
+                      
+                      {previewLoading ? (
+                        <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
+                          <div style={{ fontSize: 32, marginBottom: 16 }}>⌛</div>
+                          <p>Fetching abstract...</p>
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          background: 'white', color: '#1a1a1a', padding: '40px', borderRadius: '4px', 
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)', fontFamily: '"Times New Roman", Times, serif',
+                          textAlign: 'justify', lineHeight: '1.6'
+                        }}>
+                          <div style={{ borderBottom: '2px solid #1a1a1a', paddingBottom: '12px', marginBottom: '24px', textAlign: 'center' }}>
+                            <h2 style={{ fontSize: '1.5rem', margin: 0 }}>ACADEMIC PREVIEW</h2>
+                          </div>
+                          <div style={{ fontSize: '1rem', whiteSpace: 'pre-wrap' }}>{previewText}</div>
+                          <div style={{ marginTop: 40, borderTop: '1px solid #ddd', paddingTop: 16, fontSize: '0.8rem', fontStyle: 'italic', color: '#666', textAlign: 'center' }}>
+                            Full text access available via x402 payment ($0.10)
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <p style={{ color: 'var(--text-primary)', fontSize: 15, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{answer}</p>
-                  </div>
-                )}
+                  ) : (
+                    <div>
+                      <div style={{ padding: '0 0 16px 0', borderBottom: '1px solid var(--border-color)', marginBottom: 20 }}>
+                        <h3 style={{ marginBottom: 4 }}>Ask AI Research Agent</h3>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, background: 'rgba(16,185,129,0.1)', color: 'var(--accent-emerald)', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>x402 protocol</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>0.01 USDC/query</span>
+                        </div>
+                      </div>
+
+                      <form onSubmit={handleQuery} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <textarea
+                          className="input"
+                          value={question}
+                          onChange={(e) => { setQuestion(e.target.value); setShowBypassButton(false); }}
+                          placeholder="What logic is explained on page 1?"
+                          rows={4}
+                          style={{ resize: 'none', background: 'rgba(255,255,255,0.03)' }}
+                        />
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <button type="submit" className="btn-primary" disabled={answering || !question.trim()} style={{ width: '100%' }}>
+                            {answering ? '🤔 Thinking...' : '🧠 Ask NanoClaw RAG'}
+                          </button>
+
+                          {needsPayment && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              <button 
+                                className="btn-primary" 
+                                onClick={handlePayment}
+                                disabled={paymentLoading}
+                                style={{ 
+                                  background: 'var(--accent-emerald)', border: 'none', color: 'white', width: '100%'
+                                }}
+                              >
+                                {paymentLoading ? '⏳ Confirming...' : '💳 Pay $0.01 to Unlock'}
+                              </button>
+                              
+                              {showBypassButton && (
+                                <button 
+                                  onClick={() => { setNeedsPayment(false); setShowBypassButton(false); handleQuery({ preventDefault: () => {} } as any); }}
+                                  className="btn-secondary"
+                                  style={{ width: '100%', borderColor: '#f59e0b', color: '#f59e0b', fontSize: 13 }}
+                                >
+                                  ⚠️ Saltar Pago (Modo Demo)
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </form>
+
+                      {error && (
+                        <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(239,68,68,0.05)', borderLeft: '3px solid #ef4444', color: '#f87171', fontSize: 13 }}>
+                          {error}
+                        </div>
+                      )}
+
+                      {answer && (
+                        <div style={{
+                          marginTop: 24, padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(99, 102, 241, 0.2)',
+                          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)'
+                        }}>
+                          <div style={{ fontSize: 12, color: 'var(--accent-indigo)', fontWeight: 700, marginBottom: 10, textTransform: 'uppercase' }}>
+                            ✨ AI Insight from Pi
+                          </div>
+                          <p style={{ color: 'var(--text-primary)', fontSize: 15, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{answer}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

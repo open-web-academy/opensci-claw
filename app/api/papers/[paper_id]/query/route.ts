@@ -21,7 +21,10 @@ export async function POST(
     
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-payment-proof': request.headers.get('x-payment-proof') || ''
+      },
       body: JSON.stringify(body),
     });
 

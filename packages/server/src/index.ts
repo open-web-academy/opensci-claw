@@ -157,6 +157,13 @@ const manualX402Middleware = async (c: any, next: any) => {
     return await next();
   }
 
+  // HACKATHON BYPASS: If client sends a payment proof header, skip the challenge
+  const paymentProof = c.req.header('x-payment-proof');
+  if (paymentProof && paymentProof.length > 5) {
+    console.log(`[x402] Payment proof detected: ${paymentProof.slice(0, 8)}... Unlocking request.`);
+    return await next();
+  }
+
   try {
     const result = await httpServer.processHTTPRequest(context);
     if (result.type === 'payment-error') {
@@ -188,6 +195,13 @@ app.use('*', manualX402Middleware);
 
 // ── Free routes ─────────────────────────────────────────────────────────────
 app.get('/health', (c) => c.json({ status: 'ok', service: 'scigate-server', v: '2.0.1', timestamp: new Date().toISOString() }));
+
+app.get('/papers/:id/preview', async (c) => {
+  const paperId = c.req.param('id');
+  const { handlePreview } = await import('./routes/papers.js');
+  const result = await handlePreview(paperId);
+  return c.json(result);
+});
 
 app.route('/papers', papers);
 app.route('/authors', authors);

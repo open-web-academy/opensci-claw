@@ -67,6 +67,21 @@ export async function handleQuery(paperId: string, question: string) {
   return queryPaper(paperId, question);
 }
 
+export async function handlePreview(paperId: string) {
+  const sectionRes = await getPaperSections(paperId);
+  if (!sectionRes.sections || sectionRes.sections.length === 0) {
+    return { error: 'No sections found for this paper' };
+  }
+  // Return the first section as preview (Abstract/Intro)
+  const first = sectionRes.sections[0];
+  return {
+    paper_id: paperId,
+    title: first.name,
+    content: first.content,
+    total_sections: sectionRes.sections.length
+  };
+}
+
 export async function handleSection(paperId: string, sectionName: string) {
   const sectionRes = await getPaperSections(paperId);
   const section = sectionRes.sections.find(
