@@ -9,6 +9,8 @@ import { queryPaper, getPaperSections, searchPapers } from '../services/rag.js';
  */
 const papers = new Hono();
 
+import { PAY_TO_ADDRESS } from '../config.js';
+
 // ── GET /papers/search?q=... ──────────────────────────────────────────────────
 papers.get('/search', async (c) => {
   const q = c.req.query('q');
@@ -24,8 +26,22 @@ papers.get('/:id/metadata', async (c) => {
   const id = c.req.param('id') as `0x${string}`;
   const paper = await getPaperFromChain(id);
 
+  // --- HACKATHON HYBRID FIX: Return mock metadata for local papers ---
   if (!paper) {
-    return c.json({ error: 'Paper not found' }, 404);
+    return c.json({
+      contentHash: id,
+      author: PAY_TO_ADDRESS,
+      metadataURI: 'ipfs://local-rag-resource',
+      pricePerQuery: '10000', // $0.01 (6 decimals)
+      pricePerFull: '100000', // $0.10
+      trainingPrice: '0',
+      totalEarnings: '0',
+      totalAccesses: '0',
+      active: true,
+      createdAt: new Date().toISOString(),
+      isLocal: true,
+      title: 'Local Paper (RAG Engine)'
+    });
   }
 
   return c.json({

@@ -159,6 +159,7 @@ const manualX402Middleware = async (c: any, next: any) => {
 
   const result = await httpServer.processHTTPRequest(context);
   if (result.type === 'payment-error') {
+    console.error('[x402] Payment error:', result.response.body);
     return c.json(result.response.body, result.response.status as any, result.response.headers);
   }
   return await next();
