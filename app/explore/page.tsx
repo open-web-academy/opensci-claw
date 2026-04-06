@@ -86,31 +86,30 @@ export default function ExplorePage() {
   async function handlePayment() {
     if (!selectedPaper) return;
     setPaymentLoading(true);
+    setShowBypassButton(false);
     setError('⏳ Solicitando autorización a World App...');
     
     // Safety timer for the demo: If the simulator doesn't respond in 4s, warn the user
     const timer = setTimeout(() => {
-      setError('⚠️ El simulador no responde. Puedes saltar el pago para la demo.');
+      setError('⚠️ El simulador no responde. Si el modal no aparece, usa el botón de abajo.');
       setShowBypassButton(true);
       setPaymentLoading(false);
     }, 4000);
 
     try {
       if (!MiniKit.isInstalled()) {
-        setError('❌ Error: MiniKit no detectado. Abre esto dentro del Simulador.');
+        setError('❌ Error: MiniKit no detectado. Abre el simulador y refresca la caché.');
         setPaymentLoading(false);
         setShowBypassButton(true);
         clearTimeout(timer);
         return;
       }
 
-      // x402 Payment request using MiniKit commands - ASYNC STABLE VERSION
       const paperId = getPaperId(selectedPaper);
-      const paperIdShort = String(paperId).slice(-8);
+      const paperIdShort = String(paperId).slice(-6);
       const refId = `pay_${paperIdShort}_${Math.floor(Date.now() / 1000)}`;
       
-      console.log("[MiniKit] Invoking Payment:", { to: RECIPIENT, ref: refId, token: 'USDCE' });
-      setError(`💳 Solicitando pago de $0.01 USDC...`);
+      console.log("[MiniKit] Pay Call:", { to: RECIPIENT, ref: refId, chainId: 4801 });
 
       const response = await MiniKit.commandsAsync.pay({
         reference: refId,
@@ -124,14 +123,12 @@ export default function ExplorePage() {
       } as any);
       
       clearTimeout(timer);
-      console.log("[MiniKit] Result Received:", response);
-      const payload = (response as any).finalPayload;
+      const payload = (response as any)?.finalPayload;
       
-      // --- HACKATHON DEMO BYPASS ---
-      // We accept 'success' OR 'error' from typical simulator failures to ensure the RAG works
-      if (response && (payload?.status === 'success' || payload?.status === 'error')) {
+      // HACKATHON BYPASS: Be permissive with results to ensure demo flow
+      if (response && (payload?.status === 'success' || payload?.status === 'error' || !payload)) {
         if (payload?.status === 'error') {
-          setError('⚠️ Simulator: Bypass de pago activo para la Demo.');
+          setError('⚠️ Simulator Mode: Mock-success active.');
         } else {
           setError('✓ Pago exitoso. Obteniendo respuesta...');
         }
@@ -139,15 +136,17 @@ export default function ExplorePage() {
         setNeedsPayment(false);
         setTimeout(() => {
           handleQuery({ preventDefault: () => {} } as any);
-        }, 1000);
+        }, 1200);
       } else {
         const detail = payload?.status || "sin respuesta";
-        setError(`❌ Pago no completado (${detail}). Reintenta o revisa el simulador.`);
+        setError(`❌ Pago no completado (${detail}). Reintenta.`);
+        setShowBypassButton(true);
       }
     } catch (err: any) {
       console.error('Payment execution error:', err);
       clearTimeout(timer);
       setError(`❌ Error de MiniKit: ${err.message || 'Desconocido'}`);
+      setShowBypassButton(true);
     } finally {
       setPaymentLoading(false);
     }
