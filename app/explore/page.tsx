@@ -97,11 +97,13 @@ export default function ExplorePage() {
         reference: refId,
         chainId: 4801, // World Chain Sepolia
         tokens: [{
-          symbol: 'USDCE', 
+          symbol: 'WLD', 
           amount: "0.01",
         }],
         recipient: RECIPIENT,
       } as any);
+      
+      console.log("[MiniKit] Full Payment Response:", response);
       
       const payload = (response as any).finalPayload;
       if (payload && payload.status === 'success') {
@@ -109,7 +111,8 @@ export default function ExplorePage() {
         setError('✓ Payment successful! Retrying query...');
         handleQuery({ preventDefault: () => {} } as any);
       } else {
-        throw new Error('Payment failed or cancelled');
+        const detail = payload?.status || "cancelled/failed";
+        throw new Error(`Payment ${detail}. Ensure you have balance in World App Simulator.`);
       }
     } catch (err: any) {
       console.error('Payment execution error:', err);
