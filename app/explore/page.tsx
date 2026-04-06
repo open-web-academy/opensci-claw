@@ -29,12 +29,14 @@ export default function ExplorePage() {
   const [error, setError] = useState('');
   const [needsPayment, setNeedsPayment] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showBypassButton, setShowBypassButton] = useState(false);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
     setLoading(true);
     setError('');
+    setShowBypassButton(false);
     try {
       const res = await fetch(`/api/papers/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -55,6 +57,7 @@ export default function ExplorePage() {
     setAnswering(true);
     setAnswer('');
     setError('');
+    setShowBypassButton(false);
 
     try {
       const res = await fetch(`/api/papers/${encodeURIComponent(paperId)}/query`, {
@@ -83,55 +86,68 @@ export default function ExplorePage() {
   async function handlePayment() {
     if (!selectedPaper) return;
     setPaymentLoading(true);
-    setError('⏳ Connectando con World App...');
+    setError('⏳ Solicitando autorización a World App...');
+    
+    // Safety timer for the demo: If the simulator doesn't respond in 4s, warn the user
+    const timer = setTimeout(() => {
+      setError('⚠️ El simulador no responde. Puedes saltar el pago para la demo.');
+      setShowBypassButton(true);
+      setPaymentLoading(false);
+    }, 4000);
 
     try {
       if (!MiniKit.isInstalled()) {
-        setError('❌ Error: MiniKit no detectado. Abre esto dentro de World App o el Simulador.');
+        setError('❌ Error: MiniKit no detectado. Abre esto dentro del Simulador.');
         setPaymentLoading(false);
+        setShowBypassButton(true);
+        clearTimeout(timer);
         return;
       }
 
-      // Safe Reference ID construction
+      // x402 Payment request using MiniKit commands - ASYNC STABLE VERSION
       const paperId = getPaperId(selectedPaper);
       const paperIdShort = String(paperId).slice(-8);
       const refId = `pay_${paperIdShort}_${Math.floor(Date.now() / 1000)}`;
+      
+      console.log("[MiniKit] Invoking Payment:", { to: RECIPIENT, ref: refId, token: 'USDCE' });
+      setError(`💳 Solicitando pago de $0.01 USDC...`);
 
-      setError(`⏳ Solicitando autorización de pago (Ref: ${paperIdShort})...`);
-
-      // x402 Payment request using MiniKit commands
       const response = await MiniKit.commandsAsync.pay({
         reference: refId,
         chainId: 4801, // World Chain Sepolia
         tokens: [{
-          symbol: 'WLD', 
+          symbol: 'USDCE', 
           amount: "0.01",
         }],
+        to: RECIPIENT,
         recipient: RECIPIENT,
       } as any);
       
-      console.log("[MiniKit] Response:", response);
+      clearTimeout(timer);
+      console.log("[MiniKit] Result Received:", response);
       const payload = (response as any).finalPayload;
       
       // --- HACKATHON DEMO BYPASS ---
+      // We accept 'success' OR 'error' from typical simulator failures to ensure the RAG works
       if (response && (payload?.status === 'success' || payload?.status === 'error')) {
         if (payload?.status === 'error') {
-          setError('⚠️ Simulator: Payment mock-passed for demo.');
+          setError('⚠️ Simulator: Bypass de pago activo para la Demo.');
         } else {
-          setError('✓ Payment successful! Retrying query...');
+          setError('✓ Pago exitoso. Obteniendo respuesta...');
         }
         
         setNeedsPayment(false);
         setTimeout(() => {
           handleQuery({ preventDefault: () => {} } as any);
-        }, 800);
+        }, 1000);
       } else {
-        const detail = payload?.status || "cancelled/failed";
-        setError(`❌ Payment ${detail}. Revisa tu saldo en el simulador.`);
+        const detail = payload?.status || "sin respuesta";
+        setError(`❌ Pago no completado (${detail}). Reintenta o revisa el simulador.`);
       }
     } catch (err: any) {
       console.error('Payment execution error:', err);
-      setError(`❌ Error de ejecución: ${err.message}`);
+      clearTimeout(timer);
+      setError(`❌ Error de MiniKit: ${err.message || 'Desconocido'}`);
     } finally {
       setPaymentLoading(false);
     }
@@ -262,6 +278,20 @@ export default function ExplorePage() {
                     >
                       {paymentLoading ? '⏳ Confirming...' : '💳 Pay $0.01 to Unlock'}
                     </button>
+                    
+                    {showBypassButton && (
+                      <button 
+                        onClick={() => {
+                          setNeedsPayment(false);
+                          setShowBypassButton(false);
+                          handleQuery({ preventDefault: () => {} } as any);
+                        }}
+                        className="btn-secondary"
+                        style={{ marginTop: 12, width: '100%', borderColor: '#f59e0b', color: '#f59e0b', fontSize: 13 }}
+                      >
+                        ⚠️ Saltar Pago (Modo Demo Hackathon)
+                      </button>
+                    )}
                   </div>
                 )}
 
