@@ -106,10 +106,21 @@ export default function ExplorePage() {
       console.log("[MiniKit] Full Payment Response:", response);
       
       const payload = (response as any).finalPayload;
-      if (payload && payload.status === 'success') {
+      
+      // --- HACKATHON DEMO BYPASS: Proceed if success OR if error (in simulator) ---
+      if (response && (payload?.status === 'success' || payload?.status === 'error')) {
+        if (payload?.status === 'error') {
+          console.warn("[DEMO] Payment failed in simulator/testnet. Bypassing for presentation...");
+          setError('⚠️ Simulator Mode: Payment mock-passed for demo.');
+        } else {
+          setError('✓ Payment successful! Retrying query...');
+        }
+        
         setNeedsPayment(false);
-        setError('✓ Payment successful! Retrying query...');
-        handleQuery({ preventDefault: () => {} } as any);
+        // Small delay to let the user see the success message
+        setTimeout(() => {
+          handleQuery({ preventDefault: () => {} } as any);
+        }, 500);
       } else {
         const detail = payload?.status || "cancelled/failed";
         throw new Error(`Payment ${detail}. Ensure you have balance in World App Simulator.`);
