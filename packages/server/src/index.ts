@@ -157,11 +157,28 @@ const manualX402Middleware = async (c: any, next: any) => {
     return await next();
   }
 
-  const result = await httpServer.processHTTPRequest(context);
-  if (result.type === 'payment-error') {
-    console.error('[x402] Payment error:', result.response.body);
-    return c.json(result.response.body, result.response.status as any, result.response.headers);
+  try {
+    const result = await httpServer.processHTTPRequest(context);
+    if (result.type === 'payment-error') {
+      console.error('[x402] Payment error:', result.response.body);
+      return c.json(result.response.body, result.response.status as any, result.response.headers);
+    }
+  } catch (err) {
+    console.warn('[HACKATHON] Facilitator fail on Sepolia, issuing manual 402 challenge...');
+    
+    // Find matching route config
+    const routeConfig = (routes as any)[`${context.method} ${context.path}`] || (routes as any)['POST /papers/:id/query'];
+    
+    // Return manual 402 challenge
+    return c.json({
+      error: "Payment Required",
+      accepts: routeConfig.accepts,
+      statement: routeConfig.extensions?.statement || "Access SciGate Resource"
+    }, 402, {
+      'PAYMENT-REQUIRED': JSON.stringify(routeConfig.accepts)
+    });
   }
+  
   return await next();
 };
 
