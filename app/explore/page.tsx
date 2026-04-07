@@ -32,6 +32,7 @@ export default function ExplorePage() {
   const [showBypassButton, setShowBypassButton] = useState(false);
   const [paidPapers, setPaidPapers] = useState<Record<string, string>>({});
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -138,24 +139,28 @@ export default function ExplorePage() {
       console.log('--- MINIKIT DEBUG ---');
       console.log('Response:', response);
       console.log('Payload:', payload);
+      setDebugInfo(JSON.stringify({ config: { RECIPIENT, chainId: 4801 }, response, payload }, null, 2));
 
       if (response && payload?.status === 'success') {
         setPaidPapers(prev => ({ ...prev, [paperId]: refId }));
         setNeedsPayment(false);
         setIsPaymentModalOpen(false); // SUCCESS: CLOSE MODAL
+        setDebugInfo(null);
         
         setTimeout(() => {
           handleQuery(undefined, refId);
         }, 800);
       } else {
         const detail = payload?.status || "sin respuesta";
-        setError(`❌ Pago fallido o cancelado (${detail}). Revisa la consola.`);
+        setError(`❌ Pago fallido o cancelado (${detail}).`);
         setShowBypassButton(true);
       }
     } catch (err: any) {
       console.error('Payment error:', err);
       clearTimeout(timer);
-      setError(`❌ Error: ${err.message}`);
+      const errorMessage = err.message || 'Error desconocido';
+      setError(`❌ Error de MiniKit: ${errorMessage}`);
+      setDebugInfo(JSON.stringify({ exception: errorMessage, stack: err.stack }, null, 2));
       setShowBypassButton(true);
     } finally {
       setPaymentLoading(false);
@@ -229,6 +234,17 @@ export default function ExplorePage() {
             </div>
 
             {error && <div style={{ color: '#f87171', fontSize: 13, marginTop: 16 }}>{error}</div>}
+
+            {debugInfo && (
+              <div style={{ 
+                marginTop: 20, padding: 12, background: 'rgba(0,0,0,0.3)', 
+                borderRadius: 8, textAlign: 'left', fontSize: 10, fontFamily: 'monospace',
+                maxHeight: 150, overflowY: 'auto', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <div style={{ color: 'var(--accent-indigo)', marginBottom: 4, fontWeight: 700 }}>DIAGNOSTIC LOG:</div>
+                {debugInfo}
+              </div>
+            )}
           </div>
         </div>
       )}
