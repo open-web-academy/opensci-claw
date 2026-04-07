@@ -139,12 +139,12 @@ export default function ExplorePage() {
       console.log('--- ENVIANDO PAGO REAL (USDC) ---');
       const response = await MiniKit.commandsAsync.pay({
         reference: refId,
-        chainId: 4801, 
+        to: RECIPIENT,
         tokens: [{
-          symbol: "USDC", // Using literal string to avoid enum mapping issues
+          symbol: "USDC", 
           amount: "0.01",
         }],
-        to: RECIPIENT,
+        description: "SciGate RAG Research Query", // Mandatory for many production versions
       } as any);
       
       clearTimeout(timer);
