@@ -157,14 +157,12 @@ const manualX402Middleware = async (c: any, next: any) => {
     return await next();
   }
 
-  /* 
-  // HACKATHON BYPASS DISABLED FOR DEBUGGING
+  // HACKATHON BYPASS: If client sends a payment proof header, skip the challenge
   const paymentProof = c.req.header('x-payment-proof');
   if (paymentProof && paymentProof.length > 5) {
     console.log(`[x402] Payment proof detected: ${paymentProof.slice(0, 8)}... Unlocking request.`);
     return await next();
   }
-  */
 
   try {
     const result = await httpServer.processHTTPRequest(context);
