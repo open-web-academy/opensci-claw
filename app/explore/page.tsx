@@ -139,20 +139,21 @@ export default function ExplorePage() {
       const diagnosticData = { 
         stage: 'PRE_DISPATCH',
         appId: process.env.NEXT_PUBLIC_WORLD_APP_ID || 'missing',
-        config: { RECIPIENT, network: "world-chain", chainId: 4801 },
+        config: { RECIPIENT, network: "worldchain", chainId: 4801 },
         payload: { reference: refId, to: RECIPIENT, token_amount: "10000" }
       };
 
       console.log('--- 🚀 DISPATCHING PAYMENT (V2.1) ---');
-      await remoteLog('PAYMENT_DISPATCH_INIT', diagnosticData);
-
+      console.log('--- ENVIANDO PAGO REAL (USDCE SEPOLIA) ---');
       const response = await MiniKit.commandsAsync.pay({
         reference: refId,
         to: RECIPIENT,
         tokens: [{
-          symbol: Tokens.USDC, 
+          symbol: "USDCE", // Literal string for Sepolia USDC
           token_amount: "10000", // 0.01 USDC = 10,000 units (6 decimals)
         }],
+        network: "worldchain", // Testing without hyphen for worldchain native recognition
+        chainId: 4801,
         description: "SciGate RAG Research Query",
       } as any);
 
