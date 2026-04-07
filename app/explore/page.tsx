@@ -51,10 +51,11 @@ export default function ExplorePage() {
     }
   }
 
-  async function handleQuery(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleQuery(e?: React.FormEvent, forcedProof?: string) {
+    if (e) e.preventDefault();
     const paperId = getPaperId(selectedPaper);
     if (!selectedPaper || paperId === 'unknown' || !question.trim()) return;
+    
     setAnswering(true);
     setAnswer('');
     setError('');
@@ -65,7 +66,7 @@ export default function ExplorePage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-payment-proof': paidPapers[paperId] || ''
+          'x-payment-proof': forcedProof || paidPapers[paperId] || ''
         },
         body: JSON.stringify({ question }),
       });
@@ -136,15 +137,16 @@ export default function ExplorePage() {
         if (payload?.status === 'error') {
           setError('⚠️ Simulator Mode: Mock-success active.');
         } else {
-          setError('✓ Pago exitoso. Obteniendo respuesta...');
+          setError(''); // Clear error on success
         }
         
         setPaidPapers(prev => ({ ...prev, [paperId]: refId }));
-        
         setNeedsPayment(false);
+        
+        // AUTO-RETRY: Seamlessly query again using the fresh proof
         setTimeout(() => {
-          handleQuery({ preventDefault: () => {} } as any);
-        }, 1200);
+          handleQuery(undefined, refId);
+        }, 1000);
       } else {
         const detail = payload?.status || "sin respuesta";
         setError(`❌ Pago no completado (${detail}). Reintenta.`);

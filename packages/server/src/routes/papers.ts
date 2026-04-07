@@ -22,9 +22,19 @@ papers.get('/search', async (c) => {
     const rawResults = await searchPapers(q);
     const papers = rawResults.results || [];
 
-    // ENRICHMENT: Fetch the first section (abstract) for each search result concurrently
+    // DEDUPLICATION: Group by paper_id to ensure only one card per document
+    const uniquePapersMap = new Map();
+    for (const p of papers) {
+      const id = p.paper_id || p.id || p.title; // Use title as fallback if IDs are missing
+      if (!uniquePapersMap.has(id)) {
+        uniquePapersMap.set(id, p);
+      }
+    }
+    const uniquePapers = Array.from(uniquePapersMap.values());
+
+    // ENRICHMENT: Fetch fragments only for unique documents
     const enrichedResults = await Promise.all(
-      papers.map(async (p: any) => {
+      uniquePapers.map(async (p: any) => {
         try {
           const paperId = p.paper_id || p.id;
           if (!paperId) return p;
