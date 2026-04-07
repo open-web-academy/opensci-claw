@@ -193,6 +193,17 @@ const manualX402Middleware = async (c: any, next: any) => {
 
 app.use('*', manualX402Middleware);
 
+// ── Root / Status route ──────────────────────────────────────────────────────
+app.get('/', (c) => c.html(`
+  <div style="font-family: sans-serif; padding: 40px; text-align: center;">
+    <h1 style="color: #6366f1;">🛰️ SciGate API is Online</h1>
+    <p>Version: 2.0.2 | Environment: World Chain Sepolia</p>
+    <div style="margin-top: 20px; padding: 10px; background: #f3f4f6; border-radius: 8px; display: inline-block;">
+      Status: 🟢 Protected by x402 & World ID 4.0
+    </div>
+  </div>
+`));
+
 // ── Free routes ─────────────────────────────────────────────────────────────
 app.get('/health', (c) => c.json({ status: 'ok', service: 'scigate-server', v: '2.0.1', timestamp: new Date().toISOString() }));
 
