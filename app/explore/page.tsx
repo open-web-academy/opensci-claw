@@ -138,13 +138,12 @@ export default function ExplorePage() {
       
       const response = await MiniKit.commandsAsync.pay({
         reference: refId,
-        chainId: 4801, 
+        chainId: 4801, // World Chain Mainnet (or Sepolia if using staging)
         tokens: [{
-          symbol: 'USDCE', 
+          symbol: Tokens.USDC, 
           amount: "0.01",
         }],
         to: RECIPIENT,
-        recipient: RECIPIENT,
       } as any);
       
       clearTimeout(timer);
