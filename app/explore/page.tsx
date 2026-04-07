@@ -156,6 +156,9 @@ export default function ExplorePage() {
       const diagnosticData = { config: { RECIPIENT, chainId: 4801 }, response, payload };
       setDebugInfo(JSON.stringify(diagnosticData, null, 2));
 
+      // RESTORED: SEND TO SERVER CONSOLE
+      await remoteLog('MINIKIT_PAYMENT', diagnosticData);
+
       // ONLY AUTO-PROCEED ON SUCCESS
       if (response && payload?.status === 'success') {
         setPaidPapers(prev => ({ ...prev, [paperId]: refId }));
