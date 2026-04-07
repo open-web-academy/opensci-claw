@@ -141,10 +141,12 @@ export default function ExplorePage() {
         reference: refId,
         to: RECIPIENT,
         tokens: [{
-          symbol: "USDC", 
+          symbol: Tokens.USDC, 
           amount: "0.01",
         }],
-        description: "SciGate RAG Research Query", // Mandatory for many production versions
+        network: "world-chain", // Critical: some versions require the hyphen
+        chainId: 4801,          // Ensure chainId is explicitly sent
+        description: "SciGate RAG Research Query",
       } as any);
       
       clearTimeout(timer);
