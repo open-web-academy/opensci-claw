@@ -101,12 +101,10 @@ export default function ExplorePage() {
     const paperId = getPaperId(selectedPaper);
     
     setPaymentLoading(true);
-    setShowBypassButton(false);
     setError(''); 
     
     const timer = setTimeout(() => {
-      setError('⚠️ El simulador no responde. Si el modal no aparece, usa el botón de abajo.');
-      setShowBypassButton(true);
+      setError('⚠️ El simulador no responde.');
       setPaymentLoading(false);
     }, 5000);
 
@@ -137,7 +135,11 @@ export default function ExplorePage() {
       clearTimeout(timer);
       const payload = (response as any)?.finalPayload;
       
-      if (response && (payload?.status === 'success' || payload?.status === 'error' || !payload)) {
+      console.log('--- MINIKIT DEBUG ---');
+      console.log('Response:', response);
+      console.log('Payload:', payload);
+
+      if (response && payload?.status === 'success') {
         setPaidPapers(prev => ({ ...prev, [paperId]: refId }));
         setNeedsPayment(false);
         setIsPaymentModalOpen(false); // SUCCESS: CLOSE MODAL
@@ -146,7 +148,8 @@ export default function ExplorePage() {
           handleQuery(undefined, refId);
         }, 800);
       } else {
-        setError(`❌ Pago no completado.`);
+        const detail = payload?.status || "sin respuesta";
+        setError(`❌ Pago fallido o cancelado (${detail}). Revisa la consola.`);
         setShowBypassButton(true);
       }
     } catch (err: any) {
