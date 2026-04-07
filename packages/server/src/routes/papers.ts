@@ -17,8 +17,33 @@ papers.get('/search', async (c) => {
   if (!q || q.trim().length < 2) {
     return c.json({ error: 'Query must be at least 2 characters' }, 400);
   }
-  const results = await searchPapers(q);
-  return c.json(results);
+  
+  try {
+    const rawResults = await searchPapers(q);
+    const papers = rawResults.results || [];
+
+    // ENRICHMENT: Fetch the first section (abstract) for each search result concurrently
+    const enrichedResults = await Promise.all(
+      papers.map(async (p: any) => {
+        try {
+          const paperId = p.paper_id || p.id;
+          if (!paperId) return p;
+          const sections = await getPaperSections(paperId);
+          if (sections.sections && sections.sections.length > 0) {
+            return { ...p, snippet: sections.sections[0].content };
+          }
+        } catch (err) {
+          console.warn(`[Enrichment] Failed for ${p.id || p.paper_id}:`, err);
+        }
+        return p;
+      })
+    );
+
+    return c.json({ results: enrichedResults });
+  } catch (err: any) {
+    console.error('[Search] Error:', err);
+    return c.json({ error: 'Failed to search RAG engine' }, 500);
+  }
 });
 
 // ── GET /papers/:id/metadata ──────────────────────────────────────────────────

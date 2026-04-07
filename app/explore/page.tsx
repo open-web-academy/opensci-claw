@@ -249,7 +249,7 @@ export default function ExplorePage() {
                       <div style={{ fontWeight: 700, borderBottom: '1px solid #1a1a1a', marginBottom: 8, fontSize: 11, textAlign: 'center' }}>
                         PREVIEW REPLICA
                       </div>
-                      {paper.snippet || (paper.text ? paper.text.slice(0, 400) + '...' : 'Searching abstract content...')}
+                      {paper.snippet || 'Real abstract content not found.'}
                       <div style={{ 
                         position: 'absolute', bottom: 0, left: 0, right: 0, height: '40px', 
                         background: 'linear-gradient(to top, white, transparent)' 
