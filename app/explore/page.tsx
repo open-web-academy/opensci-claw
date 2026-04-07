@@ -136,7 +136,16 @@ export default function ExplorePage() {
       const paperIdShort = String(paperId).slice(-6);
       const refId = `pay_${paperIdShort}_${Math.floor(Date.now() / 1000)}`;
       
-      console.log('--- ENVIANDO PAGO REAL (USDC) ---');
+      const diagnosticData = { 
+        stage: 'PRE_DISPATCH',
+        appId: process.env.NEXT_PUBLIC_WORLD_APP_ID || 'missing',
+        config: { RECIPIENT, network: "world-chain", chainId: 4801 },
+        payload: { reference: refId, to: RECIPIENT, token_amount: "10000" }
+      };
+
+      console.log('--- 🚀 DISPATCHING PAYMENT (V2.1) ---');
+      await remoteLog('PAYMENT_DISPATCH_INIT', diagnosticData);
+
       const response = await MiniKit.commandsAsync.pay({
         reference: refId,
         to: RECIPIENT,
@@ -146,21 +155,15 @@ export default function ExplorePage() {
         }],
         description: "SciGate RAG Research Query",
       } as any);
-      
-      clearTimeout(timer);
-      const payload = (response as any)?.finalPayload;
-      
-      console.log('--- MINIKIT DEBUG ---');
-      console.log('Response:', response);
-      console.log('Payload:', payload);
-      const diagnosticData = { config: { RECIPIENT, chainId: 4801 }, response, payload };
-      setDebugInfo(JSON.stringify(diagnosticData, null, 2));
 
-      // RESTORED: SEND TO SERVER CONSOLE
-      await remoteLog('MINIKIT_PAYMENT', diagnosticData);
+      clearTimeout(timer);
+      console.log('--- MINIKIT RESPONSE RECEIVED ---');
+      
+      const responseLog = { response, payload: (response as any).payload };
+      await remoteLog('MINIKIT_PAYMENT_RESPONSE', responseLog);
 
       // ONLY AUTO-PROCEED ON SUCCESS
-      if (response && payload?.status === 'success') {
+      if (response && (response as any).payload?.status === 'success') {
         setPaidPapers(prev => ({ ...prev, [paperId]: refId }));
         setNeedsPayment(false);
         setIsPaymentModalOpen(false); // SUCCESS: CLOSE MODAL
@@ -170,6 +173,7 @@ export default function ExplorePage() {
           handleQuery(undefined, refId);
         }, 800);
       } else {
+        const payload = (response as any).payload;
         const detail = payload?.status || "error o cancelación";
         setError(`❌ World App: ${detail}.`);
         setShowBypassButton(true); // SHOW MANUAL BYPASS BUTTON
@@ -372,8 +376,18 @@ export default function ExplorePage() {
                       background: 'rgba(99, 102, 241, 0.05)',
                       borderColor: 'var(--accent-indigo)',
                       padding: '24px',
-                      animation: 'slideDown 0.3s ease'
+                      animation: 'slideDown 0.3s ease',
+                      position: 'relative'
                     }}>
+                      {/* Environment Badge */}
+                      <div style={{ 
+                        position: 'absolute', top: 10, right: 10, fontSize: 9, fontWeight: 800, 
+                        background: (process.env.NEXT_PUBLIC_WORLD_APP_ID || '').includes('staging') ? '#f59e0b' : '#3b82f6',
+                        color: 'white', padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase'
+                      }}>
+                        {(process.env.NEXT_PUBLIC_WORLD_APP_ID || '').includes('staging') ? 'Staging (Sepolia)' : 'Production (Mainnet)'}
+                      </div>
+
                       <div style={{ padding: '0 0 16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 20 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <h3 style={{ margin: 0, fontSize: 16 }}>Ask NanoClaw AI</h3>

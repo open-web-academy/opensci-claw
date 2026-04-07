@@ -26,7 +26,7 @@ export const WORLD_CHAIN_RPC         = process.env.WORLD_CHAIN_RPC ?? 'https://w
 export const PAPER_REGISTRY_ADDRESS  = (process.env.PAPER_REGISTRY_ADDRESS ?? '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
 // ── World ID ─────────────────────────────────────────────────
-export const WORLD_APP_ID    = process.env.WORLD_APP_ID    ?? 'app_963cce5506aa7a8897060b8b948eab7b';
+export const WORLD_APP_ID    = process.env.WORLD_APP_ID    ?? 'app_aacdf4487837b144901774135e3b0803';
 export const WORLD_ACTION_ID = process.env.WORLD_ACTION_ID ?? 'verify-author';
 
 // ── RAG Engine ───────────────────────────────────────────────
