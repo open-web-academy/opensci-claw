@@ -44,16 +44,7 @@ import { authors } from './routes/authors.js';
 // ────────────────────────────────────────────────────────────────────────────
 // 1. x402 Setup: ExactEvmScheme + World Chain USDC money parser
 // ────────────────────────────────────────────────────────────────────────────
-const evmScheme = new ExactEvmScheme()
-  .registerMoneyParser(async (amount: number, network: Network) => {
-    if (network !== WORLD_CHAIN) return null;
-    console.log(`💰 [X402] Generating quote for ${amount} worldchain USDC (Sepolia)`);
-    return {
-      amount: String(Math.round(amount * 1e6)), // USDC has 6 decimals
-      asset: WORLD_USDC,
-      extra: { name: 'USD Coin', symbol: 'USDC', version: '2' }, // Explicitly set symbol to USDC
-    };
-  });
+const evmScheme = new ExactEvmScheme();
 
 // ────────────────────────────────────────────────────────────────────────────
 // 2. Facilitator — World Chain
@@ -89,7 +80,7 @@ const resourceServer = new x402ResourceServer(facilitatorClient)
 
 // ── Payment acceptors for each price tier ──────────────────────────────────
 const makeAccepts = (price: string) => [
-  { scheme: 'exact' as const, price, network: WORLD_CHAIN, payTo: PAY_TO_ADDRESS },
+  { scheme: 'exact' as const, price, network: WORLD_CHAIN, payTo: PAY_TO_ADDRESS, asset: 'native' },
 ];
 
 // ── Route declarations with free-trial extensions ──────────────────────────
@@ -192,28 +183,15 @@ const manualX402Middleware = async (c: any, next: any) => {
     // FORCED TESTNET REQUIREMENT: 
     // This manually constructs the x402 challenge to ensure it uses Native USDC (not USDCE) 
     // and points strictly to World Chain Sepolia (4801).
-    const forcedAccepts = [
-      {
-        scheme: 'exact',
-        price: '$0.01',
-        network: 'eip155:4801',
-        payTo: PAY_TO_ADDRESS,
-        asset: WORLD_USDC,
-        contractName: 'USD Coin',
-        symbol: 'USDC',
-        decimals: 6
-      },
-      {
-        scheme: 'exact',
-        price: '0.005', // ~ $0.01 at current WLD prices
-        network: 'eip155:4801',
-        payTo: PAY_TO_ADDRESS,
-        asset: '0x4200000000000000000000000000000000000006', // WLD on World Chain
-        contractName: 'Worldcoin',
-        symbol: 'WLD',
-        decimals: 18
-      }
-    ];
+    const forcedAccepts = [{
+      scheme: 'exact',
+      price: '$0.01',
+      network: 'eip155:4801',
+      payTo: PAY_TO_ADDRESS,
+      asset: 'native',
+      symbol: 'ETH',
+      decimals: 18
+    }];
 
     return c.json({
       error: "Payment Required",
