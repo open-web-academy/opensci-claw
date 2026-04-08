@@ -146,7 +146,7 @@ const app = new Hono();
 // ── Health Check (TOP PRIORITY for Render/Uptime) ──────────────────────────
 app.get('/health', (c) => {
   console.log('--- [HEALTH CHECK] Hit received at ' + new Date().toISOString() + ' ---');
-  return c.json({ status: 'ok', service: 'scigate-server', v: '2.0.4', env: 'production' });
+  return c.json({ status: 'ok', service: 'scigate-server', v: '2.0.5', env: 'production' });
 });
 
 app.use('*', async (c, next) => {
@@ -282,19 +282,23 @@ app.get('/papers/:id/data', async (c) => {
 // ────────────────────────────────────────────────────────────────────────────
 // 6. Start server (NON-BLOCKING)
 // ────────────────────────────────────────────────────────────────────────────
-console.log('\n--- 🚀 SCIGATE SERVER STARTUP (V2.0.3) ---');
+console.log('\n--- 🚀 SCIGATE SERVER STARTUP (V2.0.5) ---');
 
 serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
   console.log(`🚀 SciGate API running at http://${info.address}:${info.port}`);
-  console.log(`🔒 Health Check is online. Initializing x402 in background...`);
+  console.log(`🔒 Health Check is online. Initializing x402 in background (1s delay)...`);
   
-  (async () => {
-    try {
-      await resourceServer.initialize();
-      console.log('✅ x402 Resource Server initialized successfully');
-    } catch (err) {
-      console.error('⚠️ Warning: x402 Resource Server initialization failed:', err);
-      console.log('💡 Note: The server is still running, but paid endpoints may fail.');
-    }
-  })();
+  // FIXED: Add a small delay to ensure Hono is fully listening before starting background heavy tasks
+  // This helps Render's port detection logic.
+  setTimeout(() => {
+    (async () => {
+      try {
+        await resourceServer.initialize();
+        console.log('✅ x402 Resource Server initialized successfully');
+      } catch (err) {
+        console.error('⚠️ Warning: x402 Resource Server initialization failed:', err);
+        console.log('💡 Note: The server is still running, but paid endpoints may fail.');
+      }
+    })();
+  }, 1000);
 });
