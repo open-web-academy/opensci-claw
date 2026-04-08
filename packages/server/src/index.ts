@@ -138,6 +138,12 @@ const httpServer = new x402HTTPResourceServer(resourceServer, routes)
 // ────────────────────────────────────────────────────────────────────────────
 const app = new Hono();
 
+// ── Health Check (TOP PRIORITY for Render/Uptime) ──────────────────────────
+app.get('/health', (c) => {
+  console.log('--- [HEALTH CHECK] Hit received at ' + new Date().toISOString() + ' ---');
+  return c.json({ status: 'ok', service: 'scigate-server', v: '2.0.2', env: 'production' });
+});
+
 app.use('*', cors({
   origin: '*',
   allowHeaders: ['Content-Type', 'Authorization', 'PAYMENT-SIGNATURE'],
