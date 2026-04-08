@@ -141,7 +141,12 @@ const app = new Hono();
 // ── Health Check (TOP PRIORITY for Render/Uptime) ──────────────────────────
 app.get('/health', (c) => {
   console.log('--- [HEALTH CHECK] Hit received at ' + new Date().toISOString() + ' ---');
-  return c.json({ status: 'ok', service: 'scigate-server', v: '2.0.2', env: 'production' });
+  return c.json({ status: 'ok', service: 'scigate-server', v: '2.0.3', env: 'production' });
+});
+
+app.use('*', async (c, next) => {
+  console.log(`🚢 [${new Date().toISOString().split('T')[1].split('.')[0]}] ${c.req.method} ${c.req.path}`);
+  await next();
 });
 
 app.use('*', cors({
@@ -270,21 +275,21 @@ app.get('/papers/:id/data', async (c) => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// 6. Start server
+// 6. Start server (NON-BLOCKING)
 // ────────────────────────────────────────────────────────────────────────────
-(async () => {
-  try {
-    console.log('\n--- 🚀 SCIGATE SERVER STARTUP (V2.0.1) ---');
-    console.log('⏳ Initializing x402 Resource Server...');
-    await resourceServer.initialize();
-    console.log('✅ x402 Resource Server initialized');
+console.log('\n--- 🚀 SCIGATE SERVER STARTUP (V2.0.3) ---');
 
-    serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
-      console.log(`🚀 SciGate API running at http://${info.address}:${info.port}`);
-      console.log(`🔒 Protected endpoints require x402 payment or AgentKit free-trial`);
-    });
-  } catch (err) {
-    console.error('❌ Failed to initialize x402 Resource Server:', err);
-    process.exit(1);
-  }
-})();
+serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
+  console.log(`🚀 SciGate API running at http://${info.address}:${info.port}`);
+  console.log(`🔒 Health Check is online. Initializing x402 in background...`);
+  
+  (async () => {
+    try {
+      await resourceServer.initialize();
+      console.log('✅ x402 Resource Server initialized successfully');
+    } catch (err) {
+      console.error('⚠️ Warning: x402 Resource Server initialization failed:', err);
+      console.log('💡 Note: The server is still running, but paid endpoints may fail.');
+    }
+  })();
+});

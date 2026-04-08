@@ -155,7 +155,14 @@ export default function UploadPage() {
 
       if (!registerRes.ok) {
         const errData = await registerRes.json().catch(() => ({}));
-        throw new Error(`Database registration failed: ${errData.detail || errData.error || 'Backend server might be down'}`);
+        let detail = errData.detail || errData.error || 'Server connection failed';
+        
+        // Scrub HTML if it's an error page (like Render's 521 or 504)
+        if (detail.includes('<html') || detail.includes('<!DOCTYPE')) {
+          detail = 'The backend server (Render) is currently waking up or unreachable. Please wait 30 seconds and try again.';
+        }
+        
+        throw new Error(`Registration failed: ${detail}`);
       }
 
       setUploadResult({
