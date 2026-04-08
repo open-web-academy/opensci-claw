@@ -149,7 +149,7 @@ export default function ExplorePage() {
         reference: refId,
         to: RECIPIENT,
         tokens: [{
-          symbol: "USDCE", // Literal string for Sepolia USDC
+          symbol: "USDC", // Updated for Sepolia Native USDC
           token_amount: "10000", // 0.01 USDC = 10,000 units (6 decimals)
         }],
         network: "worldchain", // Testing without hyphen for worldchain native recognition

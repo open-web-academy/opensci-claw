@@ -99,7 +99,20 @@ export async function handleQuery(paperId: string, question: string) {
   if (!question || question.trim().length < 5) {
     return { error: 'Question must be at least 5 characters' };
   }
-  return queryPaper(paperId, question);
+  
+  console.log(`🤖 [RAG] Querying paper ${paperId} with: "${question}"`);
+  try {
+    const result = await queryPaper(paperId, question);
+    console.log(`✅ [RAG] Response received for ${paperId}`);
+    return result;
+  } catch (err: any) {
+    console.error(`❌ [RAG] Error querying paper ${paperId}:`, err.message);
+    return { 
+      error: 'RAG Engine unreachable', 
+      detail: err.message,
+      hint: 'Ensure your Tailscale/ngrok tunnel to the Raspberry Pi is active at ' + process.env.RAG_SERVICE_URL
+    };
+  }
 }
 
 export async function handlePreview(paperId: string) {
