@@ -188,19 +188,27 @@ const manualX402Middleware = async (c: any, next: any) => {
     }
   } catch (err) {
     console.warn('[HACKATHON] Facilitator fail on Sepolia, issuing manual 402 challenge...');
+    
+    // FORCED TESTNET REQUIREMENT: 
+    // This manually constructs the x402 challenge to ensure it uses Native USDC (not USDCE) 
+    // and points strictly to World Chain Sepolia (4801).
+    const forcedAccepts = [{
+      scheme: 'exact',
+      price: '$0.01',
+      network: 'eip155:4801',
+      payTo: PAY_TO_ADDRESS,
+      asset: WORLD_USDC,
+      contractName: 'USD Coin',
+      symbol: 'USDC', // DO NOT USE USDCE
+      decimals: 6
+    }];
 
-    // SAFE FALLBACK: Get requirements or use defaults
-    const defaultAccepts = [{ scheme: 'exact', price: '$0.01', network: 'eip155:4801', payTo: PAY_TO_ADDRESS }];
-    const routeConfig = (routes as any)[`${context.method} ${context.path}`] || (routes as any)['POST /papers/:id/query'];
-    const accepts = routeConfig?.accepts || defaultAccepts;
-
-    // Return manual 402 challenge with guaranteed accepts array
     return c.json({
       error: "Payment Required",
-      accepts: accepts,
-      statement: routeConfig?.extensions?.statement || "Access SciGate Resource"
+      detail: "Manual Sepolia Fallback active (v2.0.6)",
+      accepts: forcedAccepts
     }, 402, {
-      'PAYMENT-REQUIRED': JSON.stringify(accepts)
+      'PAYMENT-REQUIRED': JSON.stringify(forcedAccepts)
     });
   }
 
@@ -213,7 +221,7 @@ app.use('*', manualX402Middleware);
 app.get('/', (c) => c.html(`
   <div style="font-family: sans-serif; padding: 40px; text-align: center;">
     <h1 style="color: #6366f1;">🛰️ SciGate API is Online</h1>
-    <p>Version: 2.0.2 | Environment: World Chain Sepolia</p>
+    <p>Version: 2.0.6 | Environment: World Chain Sepolia</p>
     <div style="margin-top: 20px; padding: 10px; background: #f3f4f6; border-radius: 8px; display: inline-block;">
       Status: 🟢 Protected by x402 & World ID 4.0
     </div>
