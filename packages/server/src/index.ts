@@ -2,6 +2,9 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 
+console.log(`[CONFIG] Node Version: ${process.version}`);
+console.log(`[CONFIG] Render Port: ${process.env.PORT || '3001 (default)'}`);
+
 // ############################################################
 // #   SCIGATE FORCED UPDATE V2.0.2 - X402 INITIALIZATION FIX  #
 // ############################################################
