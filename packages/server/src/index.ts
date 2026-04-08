@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 
 console.log(`[CONFIG] Node Version: ${process.version}`);
+console.log(`[CONFIG] Current Dir: ${process.cwd()}`);
 console.log(`[CONFIG] Render Port: ${process.env.PORT || '3001 (default)'}`);
 
 // ############################################################
@@ -144,7 +145,7 @@ const app = new Hono();
 // ── Health Check (TOP PRIORITY for Render/Uptime) ──────────────────────────
 app.get('/health', (c) => {
   console.log('--- [HEALTH CHECK] Hit received at ' + new Date().toISOString() + ' ---');
-  return c.json({ status: 'ok', service: 'scigate-server', v: '2.0.3', env: 'production' });
+  return c.json({ status: 'ok', service: 'scigate-server', v: '2.0.4', env: 'production' });
 });
 
 app.use('*', async (c, next) => {
