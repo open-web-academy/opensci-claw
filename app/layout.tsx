@@ -3,8 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "SciGate — Academic Papers for AI Agents",
-  description: "Scientists publish papers and receive instant USDC micropayments every time an AI agent accesses their content. Powered by x402, World ID, and AgentKit.",
-  keywords: ["academic papers", "AI agents", "micropayments", "USDC", "World ID", "x402", "blockchain"],
+  description: "Scientists publish papers and receive instant Native ETH micropayments every time an AI agent accesses their content. Powered by x402, World ID, and AgentKit.",
+  keywords: ["academic papers", "AI agents", "micropayments", "ETH", "World ID", "x402", "blockchain"],
   openGraph: {
     title: "SciGate",
     description: "Monetize your research. Every AI query pays.",

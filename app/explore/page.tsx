@@ -143,18 +143,17 @@ export default function ExplorePage() {
         payload: { reference: refId, to: RECIPIENT, token_amount: "10000" }
       };
 
-      console.log('--- 🚀 DISPATCHING PAYMENT (V2.1) ---');
-      console.log('--- ENVIANDO PAGO REAL (USDCE SEPOLIA) ---');
+      console.log('--- 🚀 DISPATCHING PAYMENT (V2.1 - ETH NATIVE) ---');
       const response = await MiniKit.commandsAsync.pay({
         reference: refId,
         to: RECIPIENT,
         tokens: [{
-          symbol: "USDC", // Updated for Sepolia Native USDC
-          token_amount: "10000", // 0.01 USDC = 10,000 units (6 decimals)
+          symbol: "ETH", 
+          token_amount: "1000000000000", // 0.000001 ETH (Testing amount)
         }],
-        network: "worldchain", // Testing without hyphen for worldchain native recognition
+        network: "worldchain", 
         chainId: 4801,
-        description: "SciGate RAG Research Query",
+        description: "SciGate RAG Research Query (ETH)",
       } as any);
 
       clearTimeout(timer);
@@ -163,19 +162,17 @@ export default function ExplorePage() {
       const responseLog = { response, payload: (response as any).payload };
       await remoteLog('MINIKIT_PAYMENT_RESPONSE', responseLog);
 
-      // HACKATHON SIMULATION: 
-      // Even if the payment fails (insufficient balance, canceled, etc.)
-      // we proceed to query the RAG engine using the 'demo_bypass' proof.
-      // This allows showing the real World App modal but guarantees a successful demo.
+      // HACKATHON MAGIC: 
+      // Si el pago no es exitoso (cancelado, error de red, etc.), configuramos el bypass 
+      // automáticamente. Esto garantiza que el demo FLUYA perfectamente.
       if (response && (response as any).payload?.status === 'success') {
         console.log('--- ✅ REAL PAYMENT SUCCESS ---');
         setPaidPapers(prev => ({ ...prev, [paperId]: refId }));
+        setError('');
       } else {
-        console.warn('--- 🛠️ SIMULATING SUCCESS FOR DEMO ---');
-        const payload = (response as any).payload;
-        const detail = payload?.status || "error o cancelación";
-        setPaidPapers(prev => ({ ...prev, [paperId]: 'demo_bypass' })); // Use our special bypass proof
-        setError(`⚙️ Modo Demo: Simulando éxito tras ${detail}.`);
+        console.warn('--- ✨ MAGIC BYPASS TRIGGERED ---');
+        setPaidPapers(prev => ({ ...prev, [paperId]: 'demo_bypass' })); 
+        setError(`✨ Magic Bypass: Simulando éxito para el demo.`);
       }
 
       setNeedsPayment(false);
@@ -223,15 +220,15 @@ export default function ExplorePage() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ color: 'var(--text-muted)' }}>Amount</span>
-                <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>0.01 USDC</span>
+                <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>0.01 ETH</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ color: 'var(--text-muted)' }}>Network</span>
-                <span>World Chain</span>
+                <span>World Chain Sepolia</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Protocol</span>
-                <span style={{ fontFamily: 'monospace', fontSize: 12 }}>x402 Micropay</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--accent-indigo)' }}>x402 ETH Native</span>
               </div>
             </div>
 
@@ -303,7 +300,7 @@ export default function ExplorePage() {
               Explore <span className="gradient-text">Papers</span>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 17 }}>
-              Search academic papers. First 3 queries are free — then $0.01 USDC per query via x402.
+              Search academic papers. First 3 queries are free — then $0.01 ETH per query via x402.
             </p>
           </div>
 
@@ -403,9 +400,11 @@ export default function ExplorePage() {
 
                       <div style={{ padding: '0 0 16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 20 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <h3 style={{ margin: 0, fontSize: 16 }}>Ask NanoClaw AI</h3>
+                          <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 20 }}>🧬</span> Ask NanoClaw AI
+                          </h3>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <span style={{ fontSize: 10, background: 'rgba(16,185,129,0.1)', color: 'var(--accent-emerald)', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>x402</span>
+                            <span style={{ fontSize: 10, background: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent-indigo)', padding: '2px 8px', borderRadius: 4, fontWeight: 700, border: '1px solid rgba(99,102,241,0.2)' }}>X402 PROTOCOL</span>
                           </div>
                         </div>
                       </div>

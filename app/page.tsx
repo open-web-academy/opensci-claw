@@ -6,8 +6,8 @@ import { useEffect, useRef } from 'react';
 const FEATURES = [
   {
     icon: '💰',
-    title: 'Instant USDC Micropayments',
-    desc: 'Every AI query triggers an x402 payment directly to the author. No middlemen, no delays.',
+    title: 'Instant ETH Micropayments',
+    desc: 'Every AI query triggers an x402 payment directly to the author in Native ETH. No middlemen, no delays.',
   },
   {
     icon: '🪪',
@@ -39,7 +39,7 @@ const FEATURES = [
 const STATS = [
   { label: 'Academic publishing market', value: '$37B', note: 'scientists get $0' },
   { label: 'Authors verified', value: '0 → ∞', note: 'with World ID Orb' },
-  { label: 'Cost per AI query', value: '$0.01', note: 'instant to author' },
+  { label: 'Cost per AI query', value: '$0.01', note: 'instant ETH to author' },
   { label: 'Free trial queries', value: '3', note: 'per agent per paper' },
 ];
 
@@ -103,7 +103,7 @@ export default function HomePage() {
           </h1>
 
           <p style={{ fontSize: 'clamp(18px, 2vw, 22px)', color: 'var(--text-secondary)', maxWidth: 640, margin: '0 auto 48px', lineHeight: 1.6 }}>
-            Scientists publish academic papers and receive instant USDC micropayments via x402 every
+            Scientists publish academic papers and receive instant Native ETH micropayments via x402 every
             time an AI agent accesses their content. World ID ensures only real humans get paid.
           </p>
 
@@ -154,7 +154,7 @@ export default function HomePage() {
             {[
               { step: '01', title: 'Scientist publishes', desc: 'Uploads PDF, verified by World ID Orb. Paper gets RAG-indexed and registered on-chain.' },
               { step: '02', title: 'Agent discovers', desc: 'Searches metadata for free. Gets 3 free RAG queries via AgentKit free-trial mode.' },
-              { step: '03', title: 'Micropayment flows', desc: 'After free trial, each query costs $0.01 USDC via x402. Paid instantly to the scientist.' },
+              { step: '03', title: 'Micropayment flows', desc: 'After free trial, each query costs $0.01 ETH via x402. Paid instantly to the scientist in Native World Chain ETH.' },
             ].map((item) => (
               <div key={item.step} className="card" style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 48, fontWeight: 900, color: 'var(--accent-indigo)', opacity: 0.3, fontFamily: 'Space Grotesk', marginBottom: 16 }}>
