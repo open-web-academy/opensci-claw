@@ -156,26 +156,32 @@ export default function ExplorePage() {
         args: [RECIPIENT as `0x${string}`, BigInt(10000)], // 0.01 USDC
       });
 
+      const txObject = {
+        to: USDC_CONTRACT,
+        address: USDC_CONTRACT,
+        value: "0x0",
+        data: txData,
+      };
+
       const response = await (MiniKit.commandsAsync.sendTransaction as any)({
-        transaction: [{
-          to: USDC_CONTRACT,
-          address: USDC_CONTRACT,
-          value: "0x0",
-          data: txData,
-        }]
+        transaction: [txObject],
+        transactions: [txObject],
       });
 
       clearTimeout(timer);
-      console.log('--- MINIKIT TRANSACTION RESPONSE ---', response);
+      
+      // LOG DETALLADO PARA RENDER (Antes de procesar el éxito/fallo)
+      await remoteLog('MINIKIT_RAW_RESPONSE', { response });
 
-      if (response.finalPayload.status === 'success') {
-        const hash = (response.finalPayload as any).transaction_id || 'success';
+      if (response && response.finalPayload && response.finalPayload.status === 'success') {
+        const hash = (response.finalPayload as any).transaction_id || (response.finalPayload as any).transactionHash || 'success';
         console.log('✅ Payment Success! Hash/ID:', hash);
-        await handleQuery(undefined, hash); // Use hash as proof
+        await handleQuery(undefined, hash); 
         setPaymentLoading(false);
         return;
       } else {
-        throw new Error('Transaction failed or cancelled');
+        const errorDetail = response?.finalPayload ? JSON.stringify(response.finalPayload) : 'Sin respuesta de payload';
+        throw new Error(`Transaction failed or cancelled: ${errorDetail}`);
       }
       
       const responseLog = { response, payload: (response as any).payload };
