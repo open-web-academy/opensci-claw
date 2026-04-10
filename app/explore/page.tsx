@@ -156,14 +156,15 @@ export default function ExplorePage() {
         args: [RECIPIENT as `0x${string}`, BigInt(10000)], // 0.01 USDC
       });
 
-      const response = await (MiniKit.commandsAsync.sendTransaction as any)({
-        transaction: [{
-          address: USDC_CONTRACT,
-          abi: USDC_ABI,
-          functionName: 'transfer',
-          args: [RECIPIENT, "10000"],
+      // Usamos el comando de pago oficial para evitar errores de contrato no reconocido
+      const response = await (MiniKit.commandsAsync.pay as any)({
+        reference: refId,
+        to: RECIPIENT,
+        tokens: [{
+          symbol: 'USDC',
+          amount: "0.01"
         }],
-        chainId: 4801 // World Chain Sepolia
+        description: "Análisis RAG Profundo - SciGate",
       });
 
       clearTimeout(timer);
