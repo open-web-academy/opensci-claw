@@ -267,8 +267,8 @@ export default function UploadPage() {
               <div className="card">
                 <h3 style={{ marginBottom: 20 }}>💰 Pricing</h3>
                 <div className="grid-responsive">
-                  <input className="input" value={priceQuery} onChange={(e) => setPriceQuery(e.target.value)} type="number" placeholder="Price per Query (ETH)" />
-                  <input className="input" value={priceFull} onChange={(e) => setPriceFull(e.target.value)} type="number" placeholder="Full Access Price (ETH)" />
+                  <input className="input" value={priceQuery} onChange={(e) => setPriceQuery(e.target.value)} type="number" placeholder="Price per Query (USDC)" />
+                  <input className="input" value={priceFull} onChange={(e) => setPriceFull(e.target.value)} type="number" placeholder="Full Access Price (USDC)" />
                 </div>
               </div>
 

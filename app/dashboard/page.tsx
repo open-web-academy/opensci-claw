@@ -10,13 +10,12 @@ const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
 const PAPER_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_PAPER_REGISTRY_ADDRESS;
 
 const MOCK_PAPERS = [
-  { contentHash: '0xabcd1234...', title: 'Attention Is All You Need', totalEarnings: '0.000450', totalAccesses: 14, active: true },
-  { contentHash: '0xdeef5678...', title: 'BERT: Pre-training Deep Bidirectional Transformers', totalEarnings: '0.000270', totalAccesses: 8, active: true },
+  { contentHash: '0xabcd1234...', title: 'Attention Is All You Need', totalEarnings: '145000', totalAccesses: 14, active: true },
+  { contentHash: '0xdeef5678...', title: 'BERT: Pre-training Deep Bidirectional Transformers', totalEarnings: '87000', totalAccesses: 8, active: true },
 ];
 
-function ethToDisplay(amount: string) {
-  const val = parseFloat(amount);
-  return isNaN(val) ? '0.00' : val.toFixed(6);
+function usdcToDisplay(atomic: string) {
+  return (parseInt(atomic, 10) / 1_000_000).toFixed(2);
 }
 
 export default function DashboardPage() {
@@ -113,10 +112,10 @@ export default function DashboardPage() {
   }, [walletAddress]);
 
   const SUMMARY_CARDS = [
-    { label: 'Total Earned', value: `${ethToDisplay(String(totalEarnings))}`, unit: 'ETH', icon: '💰', color: 'var(--accent-emerald)' },
+    { label: 'Total Earned', value: `$${usdcToDisplay(String(totalEarnings))}`, unit: 'USDC', icon: '💰', color: 'var(--accent-emerald)' },
     { label: 'Total Accesses', value: String(totalAccesses), unit: 'queries', icon: '🔍', color: 'var(--accent-indigo)' },
     { label: 'Papers Published', value: String(papers.length), unit: 'papers', icon: '📄', color: 'var(--accent-violet)' },
-    { label: 'Avg per Query', value: totalAccesses > 0 ? `${ethToDisplay(String(totalEarnings / totalAccesses))}` : '0.00', unit: 'ETH', icon: '📈', color: 'var(--accent-cyan)' },
+    { label: 'Avg per Query', value: totalAccesses > 0 ? `$${usdcToDisplay(String(Math.round(totalEarnings / totalAccesses)))}` : '$0.00', unit: 'USDC', icon: '📈', color: 'var(--accent-cyan)' },
   ];
 
   return (
@@ -139,7 +138,7 @@ export default function DashboardPage() {
               Earnings <span className="gradient-text">Dashboard</span>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 17 }}>
-              Track your Native ETH earnings from AI agent queries in real time.
+              Track your USDC earnings from AI agent queries in real time.
             </p>
           </div>
 
@@ -245,7 +244,7 @@ export default function DashboardPage() {
                         <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontWeight: 700, color: 'var(--accent-emerald)' }}>
-                              {ethToDisplay(String(paper.totalEarnings ?? 0))} ETH
+                              ${usdcToDisplay(String(paper.totalEarnings ?? 0))}
                             </div>
                             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>earned</div>
                           </div>

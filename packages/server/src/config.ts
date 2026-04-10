@@ -11,7 +11,7 @@ export const WORLD_CHAIN = 'eip155:4801' as const;
 export const BASE        = 'eip155:8453' as const;
 
 // ── USDC on World Chain (Testnet/Sepolia mapping) ──────────
-export const WORLD_USDC  = '0x79A02482A880bCE3F13e09Da970dC34db4CD24d1'; // Keep current or update if specific testnet contract provided
+export const WORLD_USDC  = '0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88'; // Official World Chain Sepolia USDC
 export const BASE_USDC   = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 // ── x402 Facilitators ────────────────────────────────────────

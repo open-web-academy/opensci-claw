@@ -143,17 +143,17 @@ export default function ExplorePage() {
         payload: { reference: refId, to: RECIPIENT, token_amount: "10000" }
       };
 
-      console.log('--- 🚀 DISPATCHING PAYMENT (V2.1 - ETH NATIVE) ---');
+      console.log('--- 🚀 DISPATCHING PAYMENT (V2.2 - USDC NATIVE) ---');
       const response = await MiniKit.commandsAsync.pay({
         reference: refId,
         to: RECIPIENT,
         tokens: [{
-          symbol: "ETH", 
-          token_amount: "1000000000000", // 0.000001 ETH (Testing amount)
+          symbol: "USDC", 
+          token_amount: "10000", // 0.01 USDC (6 decimals)
         }],
         network: "worldchain", 
         chainId: 4801,
-        description: "SciGate RAG Research Query (ETH)",
+        description: "SciGate RAG Research Query (USDC)",
       } as any);
 
       clearTimeout(timer);
@@ -220,7 +220,7 @@ export default function ExplorePage() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ color: 'var(--text-muted)' }}>Amount</span>
-                <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>0.01 ETH</span>
+                <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>0.01 USDC</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ color: 'var(--text-muted)' }}>Network</span>
@@ -228,7 +228,7 @@ export default function ExplorePage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Protocol</span>
-                <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--accent-indigo)' }}>x402 ETH Native</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--accent-indigo)' }}>x402 USDC Micropay</span>
               </div>
             </div>
 
@@ -300,7 +300,7 @@ export default function ExplorePage() {
               Explore <span className="gradient-text">Papers</span>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 17 }}>
-              Search academic papers. First 3 queries are free — then $0.01 ETH per query via x402.
+              Search academic papers. First 3 queries are free — then $0.01 USDC per query via x402.
             </p>
           </div>
 

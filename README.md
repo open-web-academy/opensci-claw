@@ -2,7 +2,7 @@
 
 > **World Build 3 Hackathon · April 2026**
 
-SciGate is a decentralized academic publishing platform that bridges Web3 Identity and Agentic AI. Scientists publish their papers securely verified by **World ID**, and every time an AI agent or a human queries their intellectual property via RAG (Retrieval-Augmented Generation), the author instantly receives Native ETH micropayments powered by the **x402** protocol.
+SciGate is a decentralized academic publishing platform that bridges Web3 Identity and Agentic AI. Scientists publish their papers securely verified by **World ID**, and every time an AI agent or a human queries their intellectual property via RAG (Retrieval-Augmented Generation), the author instantly receives USDC micropayments powered by the **x402** protocol.
 
 ## 🚀 The Value Proposition
 1. **Verification**: Papers are tied to real humans via **World App (MiniKit)**. No AI spam in the scientific catalog.
@@ -75,7 +75,7 @@ If you are evaluating the platform remotely (e.g., via a live `ngrok` link or ho
 ## 💡 Key Features of the MVP
 * **Auto-Detect Wallets**: MiniKit detects your wallet natively; fallback fields auto-trigger for desktop testing.
 * **Smart UI Layouts**: Adaptive CSS grids that beautifully stack whether you are browsing on a 4K Desktop or an iPhone SE within the World App iframe.
-* **Micropayment Bounties**: Hit the `/api/papers/[id]/query` endpoint. The server will reject it with a `402 Payment Required` until cryptographic proof of Native ETH transfer is attached.
+* **Micropayment Bounties**: Hit the `/api/papers/[id]/query` endpoint. The server will reject it with a `402 Payment Required` until cryptographic proof of USDC transfer is attached.
 
 ## 📜 License
 MIT License. Created affectionately for the World Build 3 Hackathon.
