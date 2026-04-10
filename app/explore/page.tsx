@@ -160,7 +160,7 @@ export default function ExplorePage() {
         transaction: [{
           to: USDC_CONTRACT,
           address: USDC_CONTRACT,
-          value: "0",
+          value: "0x0",
           data: txData,
         }]
       });
@@ -208,6 +208,9 @@ export default function ExplorePage() {
       const errorMessage = err.message || 'Error desconocido';
       setError(`❌ Error de MiniKit: ${errorMessage}`);
       setDebugInfo(JSON.stringify({ exception: errorMessage, stack: err.stack }, null, 2));
+      
+      // LOG REMOTO PARA RENDER
+      await remoteLog('PAYMENT_EXCEPTION', { error: errorMessage, stack: err.stack });
       setShowBypassButton(true);
     } finally {
       setPaymentLoading(false);
