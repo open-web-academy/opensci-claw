@@ -156,15 +156,16 @@ export default function ExplorePage() {
         args: [RECIPIENT as `0x${string}`, BigInt(10000)], // 0.01 USDC
       });
 
-      // Usamos el comando de pago oficial para evitar errores de contrato no reconocido
+      // Usamos el comando de pago oficial con parámetros refinados
       const response = await (MiniKit.commandsAsync.pay as any)({
-        reference: refId,
+        reference: refId.substring(0, 36), // MiniKit requiere < 36 caracteres
         to: RECIPIENT,
         tokens: [{
           symbol: 'USDC',
           amount: "0.01"
         }],
-        description: "Análisis RAG Profundo - SciGate",
+        description: "Análisis RAG - SciGate",
+        network: 'WorldChainSepolia' // Especificamos la red
       });
 
       clearTimeout(timer);
