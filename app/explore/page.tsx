@@ -161,8 +161,9 @@ export default function ExplorePage() {
           address: USDC_CONTRACT,
           abi: USDC_ABI,
           functionName: 'transfer',
-          args: [RECIPIENT as `0x${string}`, "10000"], // 0.01 USDC
-        }]
+          args: [RECIPIENT, "10000"],
+        }],
+        chainId: 4801 // World Chain Sepolia
       });
 
       clearTimeout(timer);
