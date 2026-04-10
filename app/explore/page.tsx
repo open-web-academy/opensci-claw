@@ -148,8 +148,9 @@ export default function ExplorePage() {
         reference: refId,
         to: RECIPIENT,
         tokens: [{
-          symbol: Tokens.USDC, 
+          symbol: "USDC", 
           token_amount: "10000", // 0.01 USDC (6 decimals)
+          token_address: "0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88" // <--- Forcing your specific USDC
         }],
         network: "worldchain", 
         chainId: 4801,
@@ -242,19 +243,6 @@ export default function ExplorePage() {
                 {paymentLoading ? 'Confirmando...' : 'Pagar 0.01 USDC'}
               </button>
               
-              <button 
-                className="btn-primary" 
-                onClick={async () => {
-                  console.log('✨ [DEMO BYPASS] Manual unlock triggered.');
-                  setIsPaymentModalOpen(false);
-                  setNeedsPayment(false);
-                  handleQuery(undefined, 'demo_bypass');
-                }} 
-                style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px dashed #f59e0b', color: '#f59e0b', fontSize: 13 }}
-              >
-                🧪 Unlock with Hackathon Credits (Staging)
-              </button>
-
               <button 
                 className="btn-secondary" 
                 onClick={() => setIsPaymentModalOpen(false)}
