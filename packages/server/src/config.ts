@@ -7,11 +7,11 @@ import 'dotenv/config';
 export const PORT = parseInt(process.env.PORT ?? '3001', 10);
 
 // ── Blockchain Networks ──────────────────────────────────────
-export const WORLD_CHAIN = 'eip155:4801' as const;
+export const WORLD_CHAIN = 'eip155:480' as const;
 export const BASE        = 'eip155:8453' as const;
 
-// ── USDC on World Chain (Testnet/Sepolia mapping) ──────────
-export const WORLD_USDC  = '0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88'; // Official World Chain Sepolia USDC
+// ── USDC on World Chain (Mainnet) ──────────────────────────
+export const WORLD_USDC  = '0x79A02482A880bCe3F13E09da970dC34dB4cD24D1'; // Native World Chain USDC
 export const BASE_USDC   = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 // ── x402 Facilitators ────────────────────────────────────────
@@ -23,11 +23,11 @@ export const BASE_FACILITATOR_URL  = 'https://api.cdp.coinbase.com/platform/v2/x
 export const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS ?? '0xc813c372D8123C1D8727d37f037F5a25f2173826';
 
 // ── Smart Contract ───────────────────────────────────────────
-export const WORLD_CHAIN_RPC         = process.env.WORLD_CHAIN_RPC ?? 'https://worldchain-sepolia.g.alchemy.com/public';
+export const WORLD_CHAIN_RPC         = process.env.WORLD_CHAIN_RPC ?? 'https://worldchain-mainnet.g.alchemy.com/public';
 export const PAPER_REGISTRY_ADDRESS  = (process.env.PAPER_REGISTRY_ADDRESS ?? '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
 // ── World ID ─────────────────────────────────────────────────
-export const WORLD_APP_ID    = process.env.WORLD_APP_ID    ?? 'app_staging_aacdf4487837b144901774135e3b0803';
+export const WORLD_APP_ID    = process.env.WORLD_APP_ID    ?? 'app_aacdf4487837b144901774135e3b0803';
 export const WORLD_ACTION_ID = process.env.WORLD_ACTION_ID ?? 'verify-author';
 
 // ── RAG Engine ───────────────────────────────────────────────

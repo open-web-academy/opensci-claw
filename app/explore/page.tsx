@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { MiniKit } from '@worldcoin/minikit-js';
 import { encodeFunctionData, parseAbi } from 'viem';
 
-const USDC_CONTRACT = "0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88";
+const USDC_CONTRACT = "0x79A02482A880bCe3F13E09da970dC34dB4cD24D1";
 const USDC_ABI = parseAbi(['function transfer(address to, uint256 value) public returns (bool)']);
 
 const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
@@ -37,6 +37,13 @@ export default function ExplorePage() {
   const [paidPapers, setPaidPapers] = useState<Record<string, string>>({});
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    // MiniKit logging for production
+    if (MiniKit.isInstalled()) {
+      console.log('--- ⬡ SciGate Production Mode Active ---');
+    }
+  }, []);
 
   // REMOTE LOGGING HELPER: Sends info to server console for mobile debugging
   async function remoteLog(type: string, data: any) {
@@ -138,7 +145,7 @@ export default function ExplorePage() {
       }
 
       const paymentReference = `order_${Math.random().toString(36).slice(2, 9)}_${Date.now()}`;
-      console.log('--- 🚀 DISPATCHING PAYMENT MODAL (MiniKit.pay) ---');
+      console.log('--- 🚀 DISPATCHING PAYMENT MODAL (World Chain Mainnet) ---');
       await remoteLog('PAYMENT_START', { 
         paperId, 
         reference: paymentReference,
@@ -175,22 +182,9 @@ export default function ExplorePage() {
     } catch (err: any) {
       console.error('Payment error:', err);
       clearTimeout(timer);
-      const errorMessage = err.message || 'Error desconocido';
-      
-      // LOG REMOTO PARA RENDER
-      await remoteLog('PAYMENT_EXCEPTION', { error: errorMessage, stack: err.stack });
-
-      // MAGIC BYPASS EN CASO DE ERROR (Gas, red, etc.)
-      console.warn('--- ✨ EMERGENCY BYPASS TRIGGERED ---');
-      setPaidPapers(prev => ({ ...prev, [paperId]: 'demo_bypass' }));
-      setIsPaymentModalOpen(false);
-      setNeedsPayment(false);
-      
-      setTimeout(() => {
-        handleQuery(undefined, 'demo_bypass');
-      }, 500);
-    } finally {
       setPaymentLoading(false);
+      setError(err.message || 'Error en el proceso de pago');
+      await remoteLog('PAYMENT_EXCEPTION', { error: err.message, stack: err.stack });
     }
   }
 
@@ -223,7 +217,7 @@ export default function ExplorePage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ color: 'var(--text-muted)' }}>Network</span>
-                <span>World Chain Sepolia</span>
+                <span>World Chain Mainnet</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Protocol</span>
@@ -241,41 +235,12 @@ export default function ExplorePage() {
                 {paymentLoading ? 'Confirmando...' : 'Pagar 0.01 USDC'}
               </button>
               
-              <button 
-                className="btn-secondary" 
-                onClick={() => setIsPaymentModalOpen(false)}
-                disabled={paymentLoading}
-              >
+              <button className="btn-secondary" onClick={() => setIsPaymentModalOpen(false)} style={{ width: '100%' }}>
                 Cancelar
               </button>
-
-              {showBypassButton && (
-                <button 
-                  onClick={() => { 
-                    setIsPaymentModalOpen(false); 
-                    setNeedsPayment(false); 
-                    setShowBypassButton(false); 
-                    handleQuery(undefined, 'demo_bypass'); 
-                  }}
-                  style={{ width: '100%', borderColor: '#f59e0b', color: '#f59e0b', fontSize: 13, background: 'transparent', border: '1px solid', padding: '10px', marginTop: 10, cursor: 'pointer' }}
-                >
-                  ⚠️ Saltar Pago (Modo Demo)
-                </button>
-              )}
             </div>
 
             {error && <div style={{ color: '#f87171', fontSize: 13, marginTop: 16 }}>{error}</div>}
-
-            {debugInfo && (
-              <div style={{ 
-                marginTop: 20, padding: 12, background: 'rgba(0,0,0,0.3)', 
-                borderRadius: 8, textAlign: 'left', fontSize: 10, fontFamily: 'monospace',
-                maxHeight: 150, overflowY: 'auto', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)'
-              }}>
-                <div style={{ color: 'var(--accent-indigo)', marginBottom: 4, fontWeight: 700 }}>DIAGNOSTIC LOG:</div>
-                {debugInfo}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -390,10 +355,10 @@ export default function ExplorePage() {
                       {/* Environment Badge */}
                       <div style={{ 
                         position: 'absolute', top: 10, right: 10, fontSize: 9, fontWeight: 800, 
-                        background: (process.env.NEXT_PUBLIC_WORLD_APP_ID || '').includes('staging') || (process.env.NEXT_PUBLIC_WORLD_APP_ID || '').includes('aacdf') ? '#f59e0b' : '#3b82f6',
+                        background: '#3b82f6',
                         color: 'white', padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase'
                       }}>
-                        {(process.env.NEXT_PUBLIC_WORLD_APP_ID || '').includes('staging') || (process.env.NEXT_PUBLIC_WORLD_APP_ID || '').includes('aacdf') ? 'Staging (Sepolia)' : 'Production (Mainnet)'}
+                        Production (Mainnet)
                       </div>
 
                       <div style={{ padding: '0 0 16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 20 }}>

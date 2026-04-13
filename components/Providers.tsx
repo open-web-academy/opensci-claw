@@ -10,7 +10,7 @@ const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
-    // FALLBACK: Usamos el ID de tu proyecto por defecto
+    // FALLBACK: Usamos el ID de producción oficial
     const appId = process.env.NEXT_PUBLIC_WORLD_APP_ID || 'app_aacdf4487837b144901774135e3b0803';
     
     console.log('--- [MINIKIT INIT] ---');
