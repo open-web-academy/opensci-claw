@@ -164,7 +164,7 @@ export default function ExplorePage() {
           symbol: Tokens.USDC, // "USDCE" for World Chain
           token_amount: "10000" // 0.01 USDC (6 decimals)
         }],
-        network: 'WorldChainSepolia',
+        network: 'worldchain-sepolia',
         description: 'SciGate Analytical Query'
       });
 
