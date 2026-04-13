@@ -157,7 +157,7 @@ export default function ExplorePage() {
         reference: paymentReference,
         to: RECIPIENT,
         tokens: [{ 
-          symbol: 'USDC' as any, 
+          symbol: 'USDCE' as any, 
           token_amount: '0.01' 
         }],
         network: 'worldchain' as any,
