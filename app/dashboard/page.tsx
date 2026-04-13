@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MiniKit, Tokens } from '@worldcoin/minikit-js';
+import { MiniKit } from '@worldcoin/minikit-js';
 import Link from 'next/link';
 import { useReadContract } from 'wagmi';
 import { PAPER_REGISTRY_ABI } from '@/config/abi';
@@ -91,13 +91,13 @@ export default function DashboardPage() {
         setWalletAddress(MiniKit.user.walletAddress);
         return;
       }
-      const res = await MiniKit.commandsAsync.walletAuth({
+      const res = await MiniKit.walletAuth({
         nonce: Date.now().toString(),
         requestId: 'auth_detect_dash',
         expirationTime: new Date(Date.now() + 60 * 60 * 1000),
       });
-      if (res.finalPayload.status === 'success' && res.finalPayload.address) {
-        setWalletAddress(res.finalPayload.address);
+      if (res.data && res.data.address) {
+        setWalletAddress(res.data.address);
       }
     } catch (err: any) {
       console.error(err);

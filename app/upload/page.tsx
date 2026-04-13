@@ -96,17 +96,17 @@ export default function UploadPage() {
       }
 
       // If not in state, request it via walletAuth
-      const res = await MiniKit.commandsAsync.walletAuth({
+      const res = await MiniKit.walletAuth({
         nonce: Date.now().toString(),
         requestId: 'auth_detect',
         expirationTime: new Date(Date.now() + 60 * 60 * 1000),
       });
 
-      if (res.finalPayload.status === 'error') {
-        throw new Error(`Wallet detection failed: ${res.finalPayload.error_code}`);
+      if (!res.data || !res.data.address) {
+        throw new Error(`Wallet detection failed`);
       }
 
-      const address = res.finalPayload.address;
+      const address = res.data.address;
       if (address) {
         setWalletAddress(address);
         setWalletConfirmed(true);
