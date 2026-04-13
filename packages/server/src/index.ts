@@ -223,22 +223,28 @@ const manualX402Middleware: MiddlewareHandler = async (c, next) => {
   } catch (err) {
     console.error('[x402] Error in middleware processing, falling back to manual 402:', err);
     
+    // x402 V2 Compliant Payment requirements
     const manualAccepts = [{
       scheme: 'exact',
-      price: '$0.01',
-      network: 'eip155:4801',
+      network: WORLD_CHAIN, // 'eip155:4801'
+      asset: WORLD_USDC,    // token address
+      amount: '10000',      // $0.01 (6 decimals)
       payTo: PAY_TO_ADDRESS,
-      token: WORLD_USDC,
-      symbol: 'USDC',
-      decimals: 6
+      maxTimeoutSeconds: 3600,
+      extra: {}
     }];
 
-    return c.json({
-      error: "Payment Required",
-      detail: `Free trial limit (${FREE_TRIAL_LIMIT}) reached. Manual Sepolia Fallback active.`,
+    const paymentRequired = {
+      x402Version: 2,
+      resource: { 
+        url: c.req.url, 
+        description: 'SciGate Protected Resource' 
+      },
       accepts: manualAccepts
-    }, 402, {
-      'PAYMENT-REQUIRED': JSON.stringify(manualAccepts)
+    };
+
+    return c.json(paymentRequired, 402, {
+      'PAYMENT-REQUIRED': JSON.stringify(paymentRequired)
     });
   }
 };
