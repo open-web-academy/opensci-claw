@@ -137,28 +137,25 @@ export default function ExplorePage() {
         return;
       }
 
-      console.log('--- 🚀 DISPATCHING TRANSACTION (USDC DIRECT) ---');
-      await remoteLog('TRANSACTION_START', { paperId, chainId: 4801 });
+      console.log('--- 🚀 DISPATCHING PAYMENT MODAL (MiniKit.pay) ---');
+      await remoteLog('PAYMENT_START', { paperId, reference: crypto.randomUUID() });
 
-      const response = await MiniKit.sendTransaction({
-        chainId: 4801, // World Chain Sepolia
-        transactions: [{
-          to: USDC_CONTRACT as `0x${string}`,
-          data: encodeFunctionData({
-            abi: USDC_ABI,
-            functionName: 'transfer',
-            args: [RECIPIENT as `0x${string}`, BigInt(10000)], // 0.01 USDC
-          }),
-          value: '0x0', // Formato Hexadecimal requerido
-        }]
+      const response = await MiniKit.pay({
+        reference: crypto.randomUUID(),
+        to: RECIPIENT,
+        tokens: [{ 
+          symbol: 'USDCE' as any, // 'USDCE' es el valor interno para USDC en MiniKit 1.13
+          token_amount: '0.01' 
+        }],
+        description: `Unlock Paper: ${selectedPaper.title || paperId}`,
       });
 
       clearTimeout(timer);
       
-      await remoteLog('MINIKIT_TRANSACTION_RESPONSE', { status: response?.data?.status });
+      await remoteLog('MINIKIT_PAY_RESPONSE', { transactionId: response?.data?.transactionId });
 
-      if (response && response.data && response.data.status === 'success') {
-        const hash = (response.data as any).transaction_id || 'success';
+      if (response && response.data && response.data.transactionId) {
+        const hash = response.data.transactionId;
         console.log('✅ Payment Success! Hash:', hash);
         setPaidPapers(prev => ({ ...prev, [paperId]: hash }));
         setNeedsPayment(false);
@@ -166,7 +163,7 @@ export default function ExplorePage() {
         await handleQuery(undefined, hash); 
         return;
       } else {
-        throw new Error('Transaction failed or cancelled');
+        throw new Error('Payment failed or cancelled');
       }
     } catch (err: any) {
       console.error('Payment error:', err);
