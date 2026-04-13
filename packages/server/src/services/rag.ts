@@ -29,14 +29,29 @@ export interface SectionsResponse {
   sections: SectionInfo[];
 }
 
-async function ragFetch<T>(path: string, options?: RequestInit): Promise<T> {
+async function ragFetch<T>(path: string, options?: RequestInit, retries = 3): Promise<T> {
   const url = `${RAG_SERVICE_URL}${path}`;
-  const res = await fetch(url, options);
-  if (!res.ok) {
-    const body = await res.text().catch(() => 'unknown error');
-    throw new Error(`RAG engine error (${res.status}): ${body}`);
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return await res.json() as T;
+      
+      // If busy (Gemini 503) or rate limited (429), retry with delay
+      if (res.status === 503 || res.status === 429) {
+        console.warn(`[RAG] Engine busy (${res.status}), retrying in ${1000 * (i + 1)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+        continue;
+      }
+
+      const body = await res.text().catch(() => 'unknown error');
+      throw new Error(`RAG engine error (${res.status}): ${body}`);
+    } catch (err: any) {
+      if (i === retries - 1) throw err;
+      console.warn(`[RAG] Fetch attempt ${i + 1} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
-  return res.json() as Promise<T>;
+  throw new Error('RAG engine unreachable after retries');
 }
 
 export async function uploadPaper(formData: FormData): Promise<UploadResponse> {

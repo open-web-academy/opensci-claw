@@ -171,9 +171,8 @@ app.use('*', async (c, next) => {
 // ── Manual x402 Middleware (with Trial & Bypass) ──────────────────────────
 import { HonoAdapter } from '@x402/hono';
 
-// In-memory trial tracker for the hackathon demo
 const trialTracker = new Map<string, number>();
-const FREE_TRIAL_LIMIT = 3;
+const FREE_TRIAL_LIMIT = 1;
 
 const manualX402Middleware: MiddlewareHandler = async (c, next) => {
   const context = {
