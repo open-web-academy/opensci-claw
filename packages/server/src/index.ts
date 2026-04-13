@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 
@@ -141,17 +141,26 @@ const httpServer = new x402HTTPResourceServer(resourceServer, routes)
 // ────────────────────────────────────────────────────────────────────────────
 const app = new Hono();
 
-// ── Health Check (TOP PRIORITY for Render/Uptime) ──────────────────────────
+app.use('*', cors({
+  origin: '*',
+  allowHeaders: ['Content-Type', 'Authorization', 'PAYMENT-SIGNATURE'],
+  exposeHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
+}));
+
+// ── Mobile Debug & Health Check ───────────────────────────────────────────
 app.get('/health', (c) => {
   console.log('--- [HEALTH CHECK] Hit received at ' + new Date().toISOString() + ' ---');
   return c.json({ status: 'ok', service: 'scigate-server', v: '2.2.0', env: 'production' });
 });
 
-// MOBILE DEBUG LOGGING
 app.post('/debug/log', async (c) => {
-  const body = await c.req.json();
-  console.log(`📱 [MOBILE_LOG][${body.type}]`, JSON.stringify(body.data, null, 2));
-  return c.json({ logged: true });
+  try {
+    const body = await c.req.json();
+    console.log(`📱 [MOBILE_LOG][${body.type || 'DEBUG'}]`, JSON.stringify(body.data || body, null, 2));
+    return c.json({ logged: true });
+  } catch (err) {
+    return c.json({ ok: false }, 400);
+  }
 });
 
 app.use('*', async (c, next) => {
@@ -159,60 +168,62 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-app.use('*', cors({
-  origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization', 'PAYMENT-SIGNATURE'],
-  exposeHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
-}));
-
-// ── x402 payment middleware (handles 402 challenges and payment verification)
+// ── Manual x402 Middleware (with Trial & Bypass) ──────────────────────────
 import { HonoAdapter } from '@x402/hono';
-const manualX402Middleware = async (c: any, next: any) => {
+
+// In-memory trial tracker for the hackathon demo
+const trialTracker = new Map<string, number>();
+const FREE_TRIAL_LIMIT = 3;
+
+const manualX402Middleware: MiddlewareHandler = async (c, next) => {
   const context = {
     adapter: new HonoAdapter(c),
     path: c.req.path,
     method: c.req.method,
   };
 
+  // 1. Check if route requires payment
   if (!httpServer.requiresPayment(context)) {
     return await next();
   }
 
-  // HACKATHON BYPASS: If client sends a payment proof header, skip the challenge
+  // 2. HACKATHON BYPASS: If client sends a payment proof header, skip the challenge
   const paymentProof = c.req.header('x-payment-proof');
   if (paymentProof && (paymentProof.length > 5 || paymentProof === 'demo_bypass')) {
     console.log(`[x402] Payment bypass triggered: ${paymentProof.slice(0, 8)}... Unlocking request.`);
     return await next();
   }
 
-  try {
-    const result = await httpServer.processHTTPRequest(context);
-// In-memory trial tracker for the hackathon demo
-const trialTracker = new Map<string, number>();
-const FREE_TRIAL_LIMIT = 3;
-
-const manualX402Middleware: MiddlewareHandler = async (c, next) => {
-  // Only apply to protected paper routes
-  if (!c.req.path.includes('/papers/') || c.req.path.includes('/preview')) {
-    return await next();
-  }
-
-  // Use IP or a custom header as simple identifier for the trial
+  // 3. FREE TRIAL CHECK
   const userId = c.req.header('x-user-id') || c.req.header('cf-connecting-ip') || 'anonymous';
   const currentUses = trialTracker.get(userId) || 0;
 
+  if (currentUses < FREE_TRIAL_LIMIT) {
+    console.log(`[TRIAL] User ${userId} used ${currentUses + 1}/${FREE_TRIAL_LIMIT} free queries.`);
+    trialTracker.set(userId, currentUses + 1);
+    return await next();
+  }
+
+  // 4. LIMIT REACHED -> Challenge with x402 or Manual Fallback
+  console.warn(`[TRIAL] User ${userId} limit reached. Issuing challenge.`);
+
   try {
-    // If user still has free trials, let them through
-    if (currentUses < FREE_TRIAL_LIMIT) {
-      console.log(`[TRIAL] User ${userId} used ${currentUses + 1}/${FREE_TRIAL_LIMIT} free queries.`);
-      trialTracker.set(userId, currentUses + 1);
-      return await next();
+    // Attempt standard x402 processing first
+    const result = await httpServer.processHTTPRequest(context);
+    
+    if (result.type === 'payment-error') {
+      const { status, headers, body, isHtml } = result.response;
+      if (isHtml) {
+        return c.html(body as string, status as any, headers);
+      }
+      return c.json(body, status as any, headers);
     }
 
-    // After limit, issue the 402 challenge
-    console.warn(`[TRIAL] User ${userId} limit reached. Issuing 402 challenge.`);
+    return await next();
+  } catch (err) {
+    console.error('[x402] Error in middleware processing, falling back to manual 402:', err);
     
-    const forcedAccepts = [{
+    const manualAccepts = [{
       scheme: 'exact',
       price: '$0.01',
       network: 'eip155:4801',
@@ -225,13 +236,10 @@ const manualX402Middleware: MiddlewareHandler = async (c, next) => {
     return c.json({
       error: "Payment Required",
       detail: `Free trial limit (${FREE_TRIAL_LIMIT}) reached. Manual Sepolia Fallback active.`,
-      accepts: forcedAccepts
+      accepts: manualAccepts
     }, 402, {
-      'PAYMENT-REQUIRED': JSON.stringify(forcedAccepts)
+      'PAYMENT-REQUIRED': JSON.stringify(manualAccepts)
     });
-  } catch (err) {
-    console.error('[x402] Error in middleware:', err);
-    return await next();
   }
 };
 
@@ -247,32 +255,6 @@ app.get('/', (c) => c.html(`
     </div>
   </div>
 `));
-
-// ── Free routes ─────────────────────────────────────────────────────────────
-app.get('/health', (c) => c.json({ status: 'ok', service: 'scigate-server', v: '2.0.1', timestamp: new Date().toISOString() }));
-
-// REMOTE DEBUG LOGGING: Allows mobile frontend to send logs to server console
-app.post('/debug/log', async (c) => {
-  try {
-    const body = await c.req.json();
-    console.log('\n--- 📱 [REMOTE_DEBUG] ---');
-    console.log(JSON.stringify(body, null, 2));
-    console.log('-------------------------\n');
-    return c.json({ ok: true });
-  } catch (err) {
-    return c.json({ ok: false }, 400);
-  }
-});
-
-app.get('/papers/:id/preview', async (c) => {
-  const paperId = c.req.param('id');
-  const { handlePreview } = await import('./routes/papers.js');
-  const result = await handlePreview(paperId);
-  return c.json(result);
-});
-
-app.route('/papers', papers);
-app.route('/authors', authors);
 
 // ── Paid routes ─────────────────────────────────────────────────────────────
 app.post('/papers/:id/query', async (c) => {
