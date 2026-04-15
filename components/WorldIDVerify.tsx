@@ -14,25 +14,21 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
   const lock = useRef(false);
 
   useEffect(() => {
-    const triggerVerify = async (retries = 0) => {
+    const triggerVerify = async () => {
       if (!appId || appId === 'app_staging_placeholder') return;
+      if (lock.current) return;
       
       try {
+        console.log('Triggering World ID verification with MiniKitProvider logic...');
+        
         if (!MiniKit.isInstalled()) {
-          console.warn(`[WorldID] MiniKit not ready (Attempt ${retries + 1}). Wait...`);
-          if (retries < 5) {
-            setTimeout(() => triggerVerify(retries + 1), 1000);
-            return;
-          }
-          throw new Error('MiniKit environment not detected after multiple retries.');
+          throw new Error('MiniKit environment not detected. Please open this in the World App.');
         }
 
         lock.current = true;
         setVerifying(true);
         
-        console.log('Triggering World ID verification...');
-        
-        // El error de getActiveMiniKit ocurre DENTRO de esta llamada si el bridge falla
+        // Con MiniKitProvider, MiniKit.commands.verify o MiniKit.verify deberían funcionar sin errores internos
         const minikitAny = MiniKit as any;
         const response = await (minikitAny.verify || minikitAny.walletAuth)({
           app_id: appId,
