@@ -20,7 +20,8 @@ export const WORLD_FACILITATOR_URL = 'https://x402-worldchain.vercel.app/facilit
 export const BASE_FACILITATOR_URL  = 'https://api.cdp.coinbase.com/platform/v2/x402';
 
 // ── Wallet that receives x402 payments ───────────────────────
-export const RECIPIENT = process.env.NEXT_PUBLIC_PAY_TO_ADDRESS ?? '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
+export const PAY_TO_ADDRESS = process.env.NEXT_PUBLIC_PAY_TO_ADDRESS ?? '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
+export const RECIPIENT = PAY_TO_ADDRESS;
 
 // ── Smart Contract ───────────────────────────────────────────
 export const WORLD_CHAIN_RPC         = process.env.WORLD_CHAIN_RPC ?? 'https://rpc.worldchain.dev';

@@ -10,7 +10,7 @@ const USDC_CONTRACT = "0x79A02482A880bCe3F13E09da970dC34dB4cD24D1";
 const USDC_ABI = parseAbi(['function transfer(address to, uint256 value) public returns (bool)']);
 
 const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
-const RECIPIENT = process.env.NEXT_PUBLIC_PAY_TO_ADDRESS ?? '0xc813c372D8123C1D8727d37f037F5a25f2173826';
+const RECIPIENT = process.env.NEXT_PUBLIC_PAY_TO_ADDRESS ?? '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
 
 interface PaperResult {
   paper_id?: string;

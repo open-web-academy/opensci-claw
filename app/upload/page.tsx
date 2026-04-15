@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { parseUnits } from 'viem';
+import { parseUnits, encodeFunctionData } from 'viem';
 import { MiniKit } from '@worldcoin/minikit-js';
 import { PAPER_REGISTRY_ABI } from '@/config/abi';
 
@@ -135,10 +135,45 @@ export default function UploadPage() {
       const paperIdStr = String(ragData.paper_id);
       const contentHash = paperIdStr.startsWith('0x') ? paperIdStr : `0x${paperIdStr}`;
 
-      // 2. Local/DB Registration (Off-chain)
-      console.log('Registering paper off-chain...');
-      // By skipping MiniKit on upload, we avoid the 'invalid_contract' error entirely here.
-      // The smart contract is strictly reserved for the x402 payment agent during reads.
+      // 2. Register On-Chain (The "Optimal" Step)
+      console.log('Registering paper on World Chain Mainnet...');
+      
+      const priceQueryUnits = parseUnits(priceQuery, 6);
+      const priceFullUnits  = parseUnits(priceFull, 6);
+      const trainingPrice   = parseUnits('0.15', 6); // Default training price
+
+      if (!MiniKit.isInstalled()) {
+        throw new Error('MiniKit is not installed. On-chain registration requires the World App.');
+      }
+
+      const calldata = encodeFunctionData({
+        abi: PAPER_REGISTRY_ABI,
+        functionName: 'registerPaper',
+        args: [
+          contentHash as `0x${string}`,
+          `ipfs://placeholder/${paperIdStr}`, 
+          priceQueryUnits,
+          priceFullUnits,
+          trainingPrice
+        ],
+      });
+
+      const response = await MiniKit.sendTransaction({
+        transactions: [
+          {
+            to: (PAPER_REGISTRY_ADDRESS || '0x497f0a9304e22bbd2954774e48e2d27d787c5529') as `0x${string}`,
+            data: calldata,
+            value: '0',
+          },
+        ],
+        chainId: 480,
+      });
+
+      const txId = (response as any).data?.transactionId || (response as any).data?.transactionHash;
+
+      if (!txId) {
+        throw new Error('On-chain registration was cancelled or failed.');
+      }
 
       // 3. Register author with World ID proof and pricing in Hono server
       const registerRes = await fetch('/api/authors/register', {
@@ -149,20 +184,14 @@ export default function UploadPage() {
           world_id_proof: worldIdProof,
           paper_hash: contentHash,
           price_query: priceQuery,
-          price_full: priceFull
+          price_full: priceFull,
+          transaction_id: txId
         }),
       });
 
       if (!registerRes.ok) {
         const errData = await registerRes.json().catch(() => ({}));
-        let detail = errData.detail || errData.error || 'Server connection failed';
-        
-        // Scrub HTML if it's an error page (like Render's 521 or 504)
-        if (detail.includes('<html') || detail.includes('<!DOCTYPE')) {
-          detail = 'The backend server (Render) is currently waking up or unreachable. Please wait 30 seconds and try again.';
-        }
-        
-        throw new Error(`Registration failed: ${detail}`);
+        throw new Error(`Local registration failed: ${errData.error || 'Server connection failed'}`);
       }
 
       setUploadResult({
@@ -170,6 +199,7 @@ export default function UploadPage() {
         walletAddress,
         priceQuery,
         priceFull,
+        txHash: txId
       });
       setStep('success');
     } catch (err: any) {
@@ -200,7 +230,7 @@ export default function UploadPage() {
               Publish Your <span className="gradient-text">Research</span>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 17 }}>
-              Upload and register on World Chain Sepolia.
+              Upload and register on World Chain Mainnet.
             </p>
           </div>
 
@@ -283,7 +313,17 @@ export default function UploadPage() {
             <div className="card" style={{ textAlign: 'center', padding: 48 }}>
               <div style={{ fontSize: 72, marginBottom: 24 }}>🎉</div>
               <h2 style={{ marginBottom: 16 }}>Success!</h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Your paper is now registered on World Chain Sepolia.</p>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>Your paper is now registered on World Chain Mainnet.</p>
+              {uploadResult.txHash && (
+                <a 
+                  href={`https://worldscan.org/tx/${uploadResult.txHash}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--accent-indigo)', fontSize: 13, display: 'block', marginBottom: 32 }}
+                >
+                  View on WorldScan ↗
+                </a>
+              )}
               <Link href="/dashboard" className="btn-primary">View Dashboard</Link>
             </div>
           )}
