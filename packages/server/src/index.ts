@@ -277,32 +277,33 @@ app.post('/papers/:id/query', async (c) => {
   const paperId = c.req.param('id');
   let body: any;
   try { body = await c.req.json(); } catch { return c.json({ error: 'Invalid JSON' }, 400); }
-  const result = await handleQuery(paperId, body.question ?? '');
-  if ('error' in result) return c.json(result, 400);
-  return c.json(result);
+  const { data, status } = await handleQuery(paperId, body.question ?? '');
+  return c.json(data, status as any);
 });
 
 app.get('/papers/:id/section/:name', async (c) => {
   const paperId = c.req.param('id');
   const sectionName = c.req.param('name');
-  const result = await handleSection(paperId, sectionName);
-  if ('error' in result) return c.json(result, 404);
-  return c.json(result);
+  const { data, status } = await handleSection(paperId, sectionName);
+  return c.json(data, status as any);
 });
 
 app.get('/papers/:id/citations', async (c) => {
   const paperId = c.req.param('id');
-  return c.json(await handleCitations(paperId));
+  const { data, status } = await handleCitations(paperId);
+  return c.json(data, status as any);
 });
 
 app.get('/papers/:id/full', async (c) => {
   const paperId = c.req.param('id');
-  return c.json(await handleFull(paperId));
+  const { data, status } = await handleFull(paperId);
+  return c.json(data, status as any);
 });
 
 app.get('/papers/:id/data', async (c) => {
   const paperId = c.req.param('id');
-  return c.json(await handleData(paperId));
+  const { data, status } = await handleData(paperId);
+  return c.json(data, status as any);
 });
 
 // ────────────────────────────────────────────────────────────────────────────

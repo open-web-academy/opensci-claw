@@ -23,21 +23,18 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
         lock.current = true;
         setVerifying(true);
         
-        console.log('Searching for verify function in MiniKit...', Object.keys(MiniKit));
+        console.log('Using MiniKit v2 direct verify...');
         
-        // Buscamos la función en todas las rutas posibles de MiniKit v1/v2
-        const verifyFn = (MiniKit as any).verify || 
-                         (MiniKit as any).commands?.verify || 
-                         (MiniKit as any).commands?.worldIdVerify;
+        // En v2, NO debemos tocar .commands ni .command o lanzará error.
+        // La función DEBE estar en el nivel superior si el error dice "Usa directamente".
+        const minikitAny = MiniKit as any;
+        const verifyFn = minikitAny.verify || minikitAny.walletAuth;
 
         if (typeof verifyFn !== 'function') {
-          console.error('Available MiniKit keys:', Object.keys(MiniKit));
-          if ((MiniKit as any).commands) console.error('Available Commands:', Object.keys((MiniKit as any).commands));
-          throw new Error('MiniKit.verify function not found. Check console for available methods.');
+          throw new Error('MiniKit verification function not found in this version.');
         }
 
-        console.log('Found verify function, calling it...');
-        const response = await verifyFn.call(MiniKit, {
+        const response = await verifyFn({
           app_id: appId,
           action: action,
           signal: signal,

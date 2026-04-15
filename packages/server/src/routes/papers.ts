@@ -19,8 +19,8 @@ papers.get('/search', async (c) => {
   }
   
   try {
-    const rawResults = await searchPapers(q);
-    const papers = rawResults.results || [];
+    const { data } = await searchPapers(q);
+    const papers = data.results || [];
 
     // DEDUPLICATION: Group by paper_id to ensure only one card per document
     const uniquePapersMap = new Map();
@@ -38,9 +38,9 @@ papers.get('/search', async (c) => {
         try {
           const paperId = p.paper_id || p.id;
           if (!paperId) return p;
-          const sections = await getPaperSections(paperId);
-          if (sections.sections && sections.sections.length > 0) {
-            return { ...p, snippet: sections.sections[0].content };
+          const { data: sectionRes } = await getPaperSections(paperId);
+          if (sectionRes.sections && sectionRes.sections.length > 0) {
+            return { ...p, snippet: sectionRes.sections[0].content };
           }
         } catch (err) {
           console.warn(`[Enrichment] Failed for ${p.id || p.paper_id}:`, err);
@@ -97,14 +97,20 @@ papers.get('/:id/metadata', async (c) => {
 
 export async function handleQuery(paperId: string, question: string) {
   if (!question || question.trim().length < 5) {
-    return { error: 'Question must be at least 5 characters' };
+    return { data: { error: 'Question must be at least 5 characters' }, status: 400 };
   }
   
   console.log(`🤖 [RAG] Querying paper ${paperId} with: "${question}"`);
   try {
-    const result = await queryPaper(paperId, question);
+    const { data, status } = await queryPaper(paperId, question);
+    
+    if (status === 402) {
+      console.log(`💳 [x402] Payment Required for ${paperId}`);
+      return { data, status: 402 };
+    }
+
     console.log(`✅ [RAG] Response received for ${paperId}`);
-    return result;
+    return { data, status: 200 };
   } catch (err: any) {
     console.error(`❌ [RAG] Error querying paper ${paperId}:`, err.message);
     
@@ -113,87 +119,108 @@ export async function handleQuery(paperId: string, question: string) {
       console.warn(`[SAFETY SHIELD] Gemini quota exceeded or busy. Generating smart fallback...`);
       try {
         // Attempt to get the first section for context
-        const sectionRes = await getPaperSections(paperId);
-        const firstSec = sectionRes.sections?.[0];
+        const { data: sectionData } = await getPaperSections(paperId);
+        const firstSec = sectionData.sections?.[0];
         const title = firstSec?.name || 'Scientific Abstract';
         const snippet = firstSec?.content?.substring(0, 500) || 'This paper provides a detailed analysis of the subject matter using RAG technology.';
 
         return {
-          answer: `[ANALYSIS MODE: DEMO] Based on the document structure and the section '${title}': ${snippet}... (Note: The deep analysis engine is currently in high demand, providing an intelligent summary from the abstract).`,
-          chunks: [{ text: snippet, page: 1, chunk_index: 0 }],
-          paper_id: paperId,
-          is_simulated: true
+          data: {
+            answer: `[ANALYSIS MODE: DEMO] Based on the document structure and the section '${title}': ${snippet}... (Note: The deep analysis engine is currently in high demand, providing an intelligent summary from the abstract).`,
+            chunks: [{ text: snippet, page: 1, chunk_index: 0 }],
+            paper_id: paperId,
+            is_simulated: true
+          },
+          status: 200
         };
       } catch (innerErr) {
         return { 
-          error: 'Analysis Engine Temporarily Unavailable',
-          detail: 'High demand on Gemini API clusters. Please try again in a few minutes.'
+          data: { 
+            error: 'Analysis Engine Temporarily Unavailable',
+            detail: 'High demand on Gemini API clusters. Please try again in a few minutes.'
+          },
+          status: 503
         };
       }
     }
 
     return { 
-      error: 'RAG Engine unreachable', 
-      detail: err.message,
-      hint: 'The RAG service is active but the upstream AI provider is busy.'
+      data: { 
+        error: 'RAG Engine unreachable', 
+        detail: err.message,
+        hint: 'The RAG service is active but the upstream AI provider is busy.'
+      },
+      status: 500
     };
   }
 }
 
 export async function handlePreview(paperId: string) {
-  const sectionRes = await getPaperSections(paperId);
+  const { data: sectionRes } = await getPaperSections(paperId);
   if (!sectionRes.sections || sectionRes.sections.length === 0) {
-    return { error: 'No sections found for this paper' };
+    return { data: { error: 'No sections found for this paper' }, status: 404 };
   }
   // Return the first section as preview (Abstract/Intro)
   const first = sectionRes.sections[0];
   return {
-    paper_id: paperId,
-    title: first.name,
-    content: first.content,
-    total_sections: sectionRes.sections.length
+    data: {
+      paper_id: paperId,
+      title: first.name,
+      content: first.content,
+      total_sections: sectionRes.sections.length
+    },
+    status: 200
   };
 }
 
 export async function handleSection(paperId: string, sectionName: string) {
-  const sectionRes = await getPaperSections(paperId);
+  const { data: sectionRes } = await getPaperSections(paperId);
   const section = sectionRes.sections.find(
     (s) => s.name.toLowerCase() === sectionName.toLowerCase()
   );
   if (!section) {
-    return { error: `Section '${sectionName}' not found`, available: sectionRes.sections.map((s) => s.name) };
+    return { data: { error: `Section '${sectionName}' not found`, available: sectionRes.sections.map((s) => s.name) }, status: 404 };
   }
-  return section;
+  return { data: section, status: 200 };
 }
 
 export async function handleCitations(paperId: string) {
   // For MVP, returns sections which includes references
-  const sections = await getPaperSections(paperId);
+  const { data: sections } = await getPaperSections(paperId);
   const citations = sections.sections.find((s) => s.name.toLowerCase() === 'references');
   return {
-    paper_id: paperId,
-    citations: citations?.content ?? 'No references section found',
+    data: {
+      paper_id: paperId,
+      citations: citations?.content ?? 'No references section found',
+    },
+    status: 200
   };
 }
 
 export async function handleFull(paperId: string) {
-  const sections = await getPaperSections(paperId);
+  const { data: sections } = await getPaperSections(paperId);
   const fullText = sections.sections.map((s) => `## ${s.name}\n\n${s.content}`).join('\n\n');
   return {
-    paper_id: paperId,
-    full_text: fullText,
-    sections: sections.sections.length,
-    note: 'Full text returned as extracted text, not original PDF',
+    data: {
+      paper_id: paperId,
+      full_text: fullText,
+      sections: sections.sections.length,
+      note: 'Full text returned as extracted text, not original PDF',
+    },
+    status: 200
   };
 }
 
 export async function handleData(paperId: string) {
   // Query specifically for tables and datasets
-  const result = await queryPaper(paperId, 'What datasets, tables, and experimental results are reported in this paper?');
+  const { data: result } = await queryPaper(paperId, 'What datasets, tables, and experimental results are reported in this paper?');
   return {
-    paper_id: paperId,
-    datasets: result.answer,
-    chunks: result.chunks,
+    data: {
+      paper_id: paperId,
+      datasets: result.answer,
+      chunks: result.chunks,
+    },
+    status: 200
   };
 }
 

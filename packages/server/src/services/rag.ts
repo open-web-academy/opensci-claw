@@ -29,12 +29,22 @@ export interface SectionsResponse {
   sections: SectionInfo[];
 }
 
-async function ragFetch<T>(path: string, options?: RequestInit, retries = 3): Promise<T> {
+async function ragFetch<T>(path: string, options?: RequestInit, retries = 3): Promise<{ data: T, status: number }> {
   const url = `${RAG_SERVICE_URL}${path}`;
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(url, options);
-      if (res.ok) return await res.json() as T;
+      
+      // If payment required, return data and status immediately
+      if (res.status === 402) {
+        const data = await res.json() as T;
+        return { data, status: 402 };
+      }
+
+      if (res.ok) {
+        const data = await res.json() as T;
+        return { data, status: 200 };
+      }
       
       // If busy (Gemini 503) or rate limited (429), retry with delay
       if (res.status === 503 || res.status === 429) {
@@ -54,14 +64,14 @@ async function ragFetch<T>(path: string, options?: RequestInit, retries = 3): Pr
   throw new Error('RAG engine unreachable after retries');
 }
 
-export async function uploadPaper(formData: FormData): Promise<UploadResponse> {
+export async function uploadPaper(formData: FormData) {
   return ragFetch<UploadResponse>('/upload', {
     method: 'POST',
     body: formData,
   });
 }
 
-export async function queryPaper(paperId: string, question: string): Promise<QueryResponse> {
+export async function queryPaper(paperId: string, question: string) {
   return ragFetch<QueryResponse>('/query', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -69,10 +79,10 @@ export async function queryPaper(paperId: string, question: string): Promise<Que
   });
 }
 
-export async function getPaperSections(paperId: string): Promise<SectionsResponse> {
+export async function getPaperSections(paperId: string) {
   return ragFetch<SectionsResponse>(`/papers/${paperId}/sections`);
 }
 
-export async function searchPapers(query: string): Promise<{ results: any[] }> {
+export async function searchPapers(query: string) {
   return ragFetch<{ results: any[] }>(`/search?q=${encodeURIComponent(query)}`);
 }
