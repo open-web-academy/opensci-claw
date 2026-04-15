@@ -80,39 +80,38 @@ export default function UploadPage() {
 
   const handleDetectWallet = async () => {
     setError('');
+    console.log('Attempting wallet detection...');
     
-    // Check if we are actually inside the World App
+    // 1. First check if it's already in the global state
+    if ((MiniKit as any).walletAddress) {
+      setWalletAddress((MiniKit as any).walletAddress);
+      setWalletConfirmed(true);
+      return;
+    }
+
     if (!MiniKit.isInstalled()) {
       setMiniKitNotInstalled(true);
-      setError('MiniKit is not installed in this browser. Showing manual input for testing.');
+      setError('MiniKit is not detected. If you are in a desktop browser, please enter your wallet address manually below.');
       return;
     }
 
     try {
-      if (MiniKit.user?.walletAddress) {
-        setWalletAddress(MiniKit.user.walletAddress);
-        setWalletConfirmed(true);
-        return;
-      }
-
-      // If not in state, request it via walletAuth
+      // 2. Request Wallet Auth (this will trigger a prompt in the World App)
       const res = await MiniKit.walletAuth({
-        nonce: Date.now().toString(),
-        requestId: 'auth_detect',
-        expirationTime: new Date(Date.now() + 60 * 60 * 1000),
+        nonce: Math.random().toString(36).substring(2),
+        requestId: 'scigate_auth',
+        expirationTime: new Date(Date.now() + 1000 * 60 * 60), // 1 hour
       });
 
-      if (!res.data || !res.data.address) {
-        throw new Error(`Wallet detection failed`);
-      }
-
-      const address = res.data.address;
-      if (address) {
-        setWalletAddress(address);
+      if (res.data?.address) {
+        setWalletAddress(res.data.address);
         setWalletConfirmed(true);
+      } else {
+        throw new Error('Wallet detection failed or was cancelled.');
       }
     } catch (err: any) {
-      setError(err.message || 'Could not detect wallet. Are you in the World App?');
+      console.error('MiniKit Auth Error:', err);
+      setError(err.message || 'Could not detect wallet. Please ensure you are inside the World App.');
     }
   };
 
@@ -278,7 +277,11 @@ export default function UploadPage() {
                     action={WORLD_ACTION_ID}
                     onSuccess={handleVerifyWorldId}
                     signal={walletAddress.toLowerCase()}
-                    onError={(err) => setError('Verification failed: ' + JSON.stringify(err))}
+                    onError={(err) => {
+                      console.error('World ID Error Details:', err);
+                      const errorMsg = err instanceof Error ? err.message : (typeof err === 'object' ? JSON.stringify(err) : String(err));
+                      setError(`Verification failed: ${errorMsg === '{}' ? 'Check if "verify-author" action exists in World Portal' : errorMsg}`);
+                    }}
                   />
                 </>
               )}

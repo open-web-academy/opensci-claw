@@ -17,7 +17,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     console.log('Target App ID:', appId);
     
     if (appId) {
-      MiniKit.install(appId);
+      MiniKit.install();
     }
   }, []);
 
