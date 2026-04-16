@@ -1,65 +1,29 @@
-import { MiniKit } from '@worldcoin/minikit-js';
-import { useEffect, useState, useRef } from 'react';
+import { useState } from 'react';
+import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit';
 
 interface WorldIDVerifyProps {
   appId: string;
   action: string;
   signal: string;
-  onSuccess: (proof: any) => void;
+  onSuccess: (proof: ISuccessResult) => void;
   onError?: (err: any) => void;
 }
 
+/**
+ * WorldIDVerify Component (v2 compliant)
+ * Uses @worldcoin/idkit instead of the deprecated MiniKit.verify
+ */
 export default function WorldIDVerify({ appId, action, signal, onSuccess, onError }: WorldIDVerifyProps) {
   const [verifying, setVerifying] = useState(false);
-  const lock = useRef(false);
 
-  useEffect(() => {
-    const triggerVerify = async () => {
-      if (!appId || appId === 'app_staging_placeholder') return;
-      if (lock.current) return;
-      
-      try {
-        console.log('Triggering World ID verification with MiniKitProvider logic...');
-        
-        if (!MiniKit.isInstalled()) {
-          throw new Error('MiniKit environment not detected. Please open this in the World App.');
-        }
-
-        lock.current = true;
-        setVerifying(true);
-        
-        // Con MiniKitProvider, MiniKit.commands.verify o MiniKit.verify deberían funcionar sin errores internos
-        const response = await (MiniKit as any).verify({
-          action: action,
-          signal: signal,
-          verification_level: 'orb',
-        });
-
-        const payload = response.data || response.finalPayload || response;
-
-        if (payload.status === 'success') {
-          console.log('MiniKit Verify Success:', payload);
-          onSuccess(payload);
-        } else {
-          console.error('MiniKit Verify Error:', payload);
-          onError?.(payload);
-        }
-      } catch (err: any) {
-        console.error('MiniKit Verify Exception:', err);
-        // If it was already in flight, don't show a scary error to user
-        if (!err.message?.includes('already in flight')) {
-          onError?.(err);
-        }
-      } finally {
-        setVerifying(false);
-        // We don't unlock here immediately to prevent re-triggers if onSuccess hasn't finished
-        // But for this simple flow, we can unlock after a short delay
-        setTimeout(() => { lock.current = false; }, 2000);
-      }
-    };
-
-    triggerVerify();
-  }, [appId, action, signal]);
+  // If the appId is the placeholder, don't show the widget
+  if (!appId || appId === 'app_staging_placeholder') {
+    return (
+      <div className="card" style={{ textAlign: 'center', opacity: 0.6 }}>
+        <p>⚠️ Configuration missing: NEXT_PUBLIC_WORLD_APP_ID</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
@@ -70,16 +34,38 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
       border: '1px solid var(--border)',
       marginTop: 24 
     }}>
-      <div className="animate-pulse" style={{ fontSize: 32, marginBottom: 16 }}>🛡️</div>
-      <h3 style={{ marginBottom: 8 }}>Verifying Humanity</h3>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-        Please follow the prompt in your World App to continue.
+      <div style={{ fontSize: 32, marginBottom: 16 }}>🛡️</div>
+      <h3 style={{ marginBottom: 8 }}>World ID Verification</h3>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+        Verify your identity to publish research on Mainnet.
       </p>
-      {verifying && (
-        <div style={{ marginTop: 16, color: 'var(--accent-indigo)', fontSize: 12, fontWeight: 600 }}>
-          ⏳ WAITING FOR WORLD ID...
-        </div>
-      )}
+
+      <IDKitWidget
+        app_id={appId as `app_${string}`}
+        action={action}
+        signal={signal}
+        verification_level={VerificationLevel.Orb}
+        onSuccess={(proof) => {
+          console.log('IDKit Verification Success:', proof);
+          onSuccess(proof);
+        }}
+        handleVerify={(proof) => {
+          console.log('IDKit proof received:', proof);
+        }}
+      >
+        {({ open }) => (
+          <button 
+            className="btn-primary" 
+            onClick={() => {
+              setVerifying(true);
+              open();
+            }}
+            style={{ width: '100%', padding: '14px' }}
+          >
+            {verifying ? 'Verifying...' : 'Verify with World ID'}
+          </button>
+        )}
+      </IDKitWidget>
     </div>
   );
 }
