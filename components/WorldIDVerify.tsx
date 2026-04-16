@@ -10,8 +10,8 @@ interface WorldIDVerifyProps {
 }
 
 /**
- * WorldIDVerify (v4 / Cycle Fix)
- * Ensures the modal only mounts once the server signature is ready.
+ * WorldIDVerify (v4 / Loop Fix)
+ * Uses a strictly one-time automatic trigger on mount.
  */
 export default function WorldIDVerify({ appId, action, signal, onSuccess, onError }: WorldIDVerifyProps) {
   const [loading, setLoading] = useState(false);
@@ -19,11 +19,12 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   
+  const hasTriggered = useRef(false);
   const inFlight = useRef(false);
 
   // Fetch the signature from backend
   const prepareVerification = useCallback(async () => {
-    if (inFlight.current || rpContext) return;
+    if (inFlight.current) return;
     inFlight.current = true;
     setLoading(true);
     setError(null);
@@ -55,14 +56,15 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
       setLoading(false);
       inFlight.current = false;
     }
-  }, [appId, action, signal, rpContext, onError]);
+  }, [appId, action, signal, onError]);
 
-  // Trigger on mount
+  // Trigger strictly ONCE on mount
   useEffect(() => {
-    if (!rpContext && !loading && appId && appId !== 'app_staging_placeholder') {
+    if (!hasTriggered.current && appId && appId !== 'app_staging_placeholder') {
+      hasTriggered.current = true;
       prepareVerification();
     }
-  }, [appId, rpContext, loading, prepareVerification]);
+  }, [appId, prepareVerification]);
 
   if (!appId || appId === 'app_staging_placeholder') {
     return (
@@ -83,16 +85,24 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
     }}>
       <div className="animate-pulse" style={{ fontSize: 40, marginBottom: 16 }}>🛡️</div>
       <h3 style={{ marginBottom: 8 }}>Verifying Identity</h3>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-        {loading ? 'Requesting secure signature...' : 'Connecting to World App...'}
-      </p>
+      
+      {loading && (
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+          Connecting to World ID infrastructure...
+        </p>
+      )}
 
       {error && (
         <div style={{ padding: '14px', background: 'rgba(239,68,68,0.08)', borderRadius: 'var(--radius-sm)', marginBottom: 16, border: '1px solid rgba(239,68,68,0.2)' }}>
           <p style={{ color: '#f87171', fontSize: 13, marginBottom: 10 }}>⚠️ {error}</p>
           <button 
             className="btn-primary" 
-            onClick={() => { setRpContext(null); prepareVerification(); }} 
+            onClick={() => {
+              // Manual retry: force re-trigger
+              hasTriggered.current = false;
+              setRpContext(null); // Clear context ONLY on manual retry
+              prepareVerification();
+            }} 
             style={{ fontSize: 12, padding: '10px 20px' }}
           >
             Retry Verification
@@ -100,13 +110,18 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
         </div>
       )}
 
-      {loading && (
+      {loading && !error && (
         <div style={{ color: 'var(--accent-indigo)', fontSize: 12, fontWeight: 600, letterSpacing: '0.05em' }}>
-          ⏳ INITIALIZING...
+          ⏳ INITIALIZING MODAL...
         </div>
       )}
 
-      {/* RENDERIZADO CONDICIONAL: El widget solo existe cuando el contexto está listo */}
+      {!loading && !error && !isOpen && !rpContext && (
+        <button className="btn-primary" onClick={prepareVerification} style={{ width: '100%', padding: '14px' }}>
+          Open World ID Modal →
+        </button>
+      )}
+
       {rpContext && (
         <IDKitRequestWidget
           app_id={appId as `app_${string}`}
@@ -114,7 +129,7 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
           open={isOpen}
           onOpenChange={(open) => {
             setIsOpen(open);
-            if (!open) setRpContext(null); // Limpiar para permitir re-intentos si se cierra
+            // DO NOT set rpContext to null here, as it would trigger the mounting loop
           }}
           rp_context={rpContext}
           allow_legacy_proofs={true}
@@ -126,10 +141,9 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
           onError={(err: IDKitErrorCodes) => {
             console.error('[WorldID] Modal error:', err);
             if (err !== IDKitErrorCodes.UserRejected) {
-               setError(`Modal Error: ${err}. Check portal logs.`);
+               setError(`Modal Error: ${err}. Please retry.`);
             }
             setIsOpen(false);
-            setRpContext(null);
           }}
         />
       )}
