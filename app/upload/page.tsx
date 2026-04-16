@@ -97,7 +97,7 @@ export default function UploadPage() {
 
     try {
       // 2. Request Wallet Auth (this will trigger a prompt in the World App)
-      const res = await (MiniKit as any).commands.walletAuth({
+      const res = await (MiniKit as any).walletAuth({
         nonce: Math.random().toString(36).substring(2),
         requestId: 'scigate_auth',
         expirationTime: new Date(Date.now() + 1000 * 60 * 60), // 1 hour
