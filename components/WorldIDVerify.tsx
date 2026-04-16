@@ -38,9 +38,9 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
         const now = Math.floor(Date.now() / 1000);
         const mockRpContext = {
           rp_id: rpId as `rp_${string}`,
-          nonce: typeof crypto.randomUUID === 'function' 
-            ? crypto.randomUUID() 
-            : Math.random().toString(36).substring(2) + Date.now().toString(36),
+          nonce: Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join(''),
           created_at: now,
           expires_at: now + 3600,
           signature: '0x' + '0'.repeat(130) // Standard 65-byte zero signature
