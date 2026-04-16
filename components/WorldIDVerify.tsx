@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { IDKit, orbLegacy, IDKitCompletionResult } from '@worldcoin/idkit-core';
+import { IDKit, CredentialRequest, IDKitCompletionResult } from '@worldcoin/idkit-core';
 
 interface WorldIDVerifyProps {
   appId: string;
@@ -49,13 +49,18 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
           action: action.trim(),
           rp_context: mockRpContext,
           allow_legacy_proofs: true,
-          environment: 'staging' // Force staging to relax bridge validations
+          environment: 'staging'
         });
 
-        // Use OrbLegacy for maximum compatibility with current World App bridge
-        const request = await builder.preset(orbLegacy({ signal }));
+        // Use modern V4 constraints instead of Legacy presets
+        // This is the correct way for World ID 4.0 on Mainnet
+        const request = await builder.constraints(
+          IDKit.CredentialRequest('proof_of_human', { 
+            signal: signal.toLowerCase() 
+          })
+        );
 
-        console.log('[Headless] Modal triggered, waiting for completion...');
+        console.log('[Headless] Modal triggered with V4 constraints...');
         
         const completion: IDKitCompletionResult = await request.pollUntilCompletion();
 
