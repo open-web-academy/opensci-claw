@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { IDKitRequestWidget, orbLegacy, IDKitResult } from '@worldcoin/idkit';
 
 interface WorldIDVerifyProps {
@@ -17,7 +17,6 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
   const [loading, setLoading] = useState(false);
   const [rpContext, setRpContext] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-
   const [isOpen, setIsOpen] = useState(false);
 
   // Fetch the required server-side signature (RP Context) for World ID 4.0
@@ -34,11 +33,15 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
         body: JSON.stringify({ action, signal })
       });
 
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error ${response.status}`);
+      }
+
       const data = await response.json();
       if (!data.success) throw new Error(data.error || 'Failed to sign request');
 
       setRpContext(data.rp_context);
-      // Open the widget now that we have the context
       setIsOpen(true);
     } catch (err: any) {
       console.error('IDKit Prepare Error:', err);
@@ -48,6 +51,17 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
       setLoading(false);
     }
   }, [action, signal, loading, onError]);
+
+  // Automatic Trigger on mount
+  useEffect(() => {
+    const trigger = async () => {
+      // Small delay to ensure everything is mounted and ready
+      if (!loading && !rpContext && appId !== 'app_staging_placeholder') {
+        await prepareVerification();
+      }
+    };
+    trigger();
+  }, [appId, prepareVerification, rpContext, loading]);
 
   if (!appId || appId === 'app_staging_placeholder') {
     return (
@@ -66,35 +80,32 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
       border: '1px solid var(--border)',
       marginTop: 24 
     }}>
-      <div style={{ fontSize: 32, marginBottom: 16 }}>🛡️</div>
-      <h3 style={{ marginBottom: 8 }}>World ID Identity</h3>
+      <div className="animate-pulse" style={{ fontSize: 32, marginBottom: 16 }}>🛡️</div>
+      <h3 style={{ marginBottom: 8 }}>Verifying Humanity</h3>
       <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-        Securely verify your humanity via the official World ID modal.
+        Please wait while we securely connect to World ID...
       </p>
 
       {error && (
-        <p style={{ color: '#f87171', fontSize: 12, marginBottom: 16 }}>⚠️ {error}</p>
+        <div style={{ padding: '12px', background: 'rgba(239,68,68,0.1)', borderRadius: 'var(--radius-sm)', marginBottom: 16 }}>
+          <p style={{ color: '#f87171', fontSize: 13, marginBottom: 8 }}>⚠️ {error}</p>
+          <button className="btn-primary" onClick={prepareVerification} style={{ fontSize: 12, padding: '8px 16px' }}>Retry Verification</button>
+        </div>
       )}
 
-      <button 
-        className="btn-primary" 
-        onClick={prepareVerification}
-        style={{ width: '100%', padding: '14px' }}
-        disabled={loading}
-      >
-        {loading ? '⏳ Initializing...' : 'Verify Humanity Now →'}
-      </button>
+      {!error && !isOpen && (
+        <div style={{ color: 'var(--accent-indigo)', fontSize: 12, fontWeight: 600 }}>
+          ⏳ INITIALIZING MODAL...
+        </div>
+      )}
 
       <IDKitRequestWidget
         app_id={appId as `app_${string}`}
         action={action}
         open={isOpen}
         onOpenChange={setIsOpen}
-        // rp_context is required for v4
         rp_context={rpContext}
-        // Mandatory in v4: allows compatibility with older World ID versions
         allow_legacy_proofs={true}
-        // preset provides legacy compatibility and signal
         preset={orbLegacy({ signal: signal.toLowerCase() })}
         onSuccess={(result) => {
           console.log('IDKit Verification Success:', result);
@@ -102,7 +113,11 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
         }}
         onError={(err) => {
           console.error('IDKit Modal Error:', err);
-          setError('Modal closed or failed initialization');
+          // Only show error if it's not a user cancel
+          if (err !== 'user_rejected') {
+             setError('Modal closed or failed initialization');
+          }
+          setIsOpen(false);
         }}
       />
     </div>
