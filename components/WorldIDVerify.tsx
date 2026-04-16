@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { IDKitRequestWidget, orbLegacy, IDKitResult } from '@worldcoin/idkit';
 
 interface WorldIDVerifyProps {
@@ -18,10 +18,15 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
   const [rpContext, setRpContext] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Guard to prevent multiple simultaneous requests or infinite loops
+  const inFlight = useRef(false);
 
   // Fetch the required server-side signature (RP Context) for World ID 4.0
   const prepareVerification = useCallback(async () => {
-    if (loading) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
+    
     setLoading(true);
     setError(null);
 
@@ -49,19 +54,22 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
       onError?.(err);
     } finally {
       setLoading(false);
+      inFlight.current = false;
     }
-  }, [action, signal, loading, onError]);
+  }, [action, signal, onError]); // Removed loading from dependencies to avoid loop
 
   // Automatic Trigger on mount
   useEffect(() => {
     const trigger = async () => {
-      // Small delay to ensure everything is mounted and ready
-      if (!loading && !rpContext && appId !== 'app_staging_placeholder') {
+      // Only trigger if we don't have a context yet and are within a valid app environment
+      if (!rpContext && !loading && appId !== 'app_staging_placeholder') {
         await prepareVerification();
       }
     };
     trigger();
-  }, [appId, prepareVerification, rpContext, loading]);
+    // We only want this to run when the component actually mounts or dependencies strictly change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appId, action, signal]); 
 
   if (!appId || appId === 'app_staging_placeholder') {
     return (
@@ -89,7 +97,16 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
       {error && (
         <div style={{ padding: '12px', background: 'rgba(239,68,68,0.1)', borderRadius: 'var(--radius-sm)', marginBottom: 16 }}>
           <p style={{ color: '#f87171', fontSize: 13, marginBottom: 8 }}>⚠️ {error}</p>
-          <button className="btn-primary" onClick={prepareVerification} style={{ fontSize: 12, padding: '8px 16px' }}>Retry Verification</button>
+          <button 
+            className="btn-primary" 
+            onClick={() => {
+              setRpContext(null); // Clear context to allow retry
+              prepareVerification();
+            }} 
+            style={{ fontSize: 12, padding: '8px 16px' }}
+          >
+            Retry Verification
+          </button>
         </div>
       )}
 
@@ -113,11 +130,11 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
         }}
         onError={(err) => {
           console.error('IDKit Modal Error:', err);
-          // Only show error if it's not a user cancel
-          if (err !== 'user_rejected') {
-             setError('Modal closed or failed initialization');
+          if (err !== 'user_rejected' as any) {
+             setError('Identity verification closed. Please try again.');
           }
           setIsOpen(false);
+          setRpContext(null); // Reset context on error to allow clean retry
         }}
       />
     </div>

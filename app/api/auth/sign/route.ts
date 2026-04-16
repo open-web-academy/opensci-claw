@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { signRequest } from '@worldcoin/idkit/signing';
 
 // In a real production app, this key should be in your .env
-// For the hackathon staging environment, we use a valid 64-char hex string as fallback
-const SIGNING_KEY = process.env.WORLD_ID_SIGNING_KEY || '0000000000000000000000000000000000000000000000000000000000000000';
+// For the hackathon staging environment, we use a valid non-zero hex string as fallback
+const SIGNING_KEY = process.env.WORLD_ID_SIGNING_KEY || 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const RP_ID = process.env.NEXT_PUBLIC_WORLD_RP_ID || 'rp_scigate';
 
 export async function POST(req: NextRequest) {
