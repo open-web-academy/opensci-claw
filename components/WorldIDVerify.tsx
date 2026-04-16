@@ -31,8 +31,10 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
         // Mock context for hackathon fallback
         // In a real production app, this must come from /api/auth/sign
         const now = Math.floor(Date.now() / 1000);
+        const rpId = appId.startsWith('app_') ? appId.replace('app_', 'rp_') : `rp_${appId}`;
+
         const mockRpContext = {
-          rp_id: appId.replace('app_', 'rp_'),
+          rp_id: rpId,
           nonce: Math.random().toString(36).substring(7),
           created_at: now,
           expires_at: now + 3600,
