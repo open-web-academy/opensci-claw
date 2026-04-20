@@ -272,15 +272,16 @@ export default function UploadPage() {
                   <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.06)', borderRadius: 'var(--radius-md)', marginBottom: 24, fontSize: 13, color: 'var(--accent-emerald)', border: '1px solid rgba(16,185,129,0.2)' }}>
                     ✓ World App Wallet Detected: {walletAddress.slice(0, 10)}...{walletAddress.slice(-4)}
                   </div>
-                  <WorldIDVerify
+                   <WorldIDVerify
                     appId={WORLD_APP_ID}
                     action={WORLD_ACTION_ID}
                     onSuccess={handleVerifyWorldId}
                     signal={walletAddress.toLowerCase()}
                     onError={(err) => {
                       console.error('World ID Error Details:', err);
-                      const errorMsg = err instanceof Error ? err.message : (typeof err === 'object' ? JSON.stringify(err) : String(err));
-                      setError(`Verification failed: ${errorMsg === '{}' ? 'Check if "verify-author" action exists in World Portal' : errorMsg}`);
+                      // Handle MiniKit vs IDKit error formats
+                      const errorMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                      setError(`Verification Error: ${errorMsg === '{}' ? 'Ensure "verify-author" exists in Production tab of Developer Portal' : errorMsg}`);
                     }}
                   />
                 </>

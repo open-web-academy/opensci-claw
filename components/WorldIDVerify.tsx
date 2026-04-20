@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { IDKit, CredentialRequest, IDKitCompletionResult } from '@worldcoin/idkit-core';
+import { MiniKit, VerificationLevel as MiniKitVerificationLevel } from '@worldcoin/minikit-js';
 
 interface WorldIDVerifyProps {
   appId: string;
@@ -10,9 +11,10 @@ interface WorldIDVerifyProps {
 }
 
 /**
- * WorldIDVerify (Headless Core v4)
- * Uses the pure functional API to avoid UI rendering crashes (React 19 / WebView).
- * This method is the MOST stable for World App Mini Apps.
+ * WorldIDVerify (Hybrid MiniKit + IDKit)
+ * Priority order:
+ * 1. MiniKit.verify (Native modal - smoothest for Mainnet)
+ * 2. IDKit Core (Functional bridge - fallback for simulator/web)
  */
 export default function WorldIDVerify({ appId, action, signal, onSuccess, onError }: WorldIDVerifyProps) {
   const [status, setStatus] = useState<'initializing' | 'waiting' | 'success' | 'error'>('initializing');
@@ -25,56 +27,55 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
 
     async function startVerification() {
       try {
-        const cleanAppId = appId.trim();
-        console.log('[Headless] Starting verification for:', cleanAppId);
+        // 1. Detect Environment based on App ID prefix
+        const isProduction = appId.startsWith('app_') && !appId.startsWith('app_staging_');
+        const env = isProduction ? 'production' : 'staging';
+        
+        console.log(`[WorldID] Initialization (${env}) for Action: ${action}`);
         setStatus('waiting');
 
-        // REAL RP ID FROM PORTAL SCREENSHOT
-        const rpId = 'rp_e2b239675f4bd84b';
+        // 2. PRIMARY: Use MiniKit if installed (Best for Mainnet/World App)
+        if (MiniKit.isInstalled()) {
+          console.log('[WorldID] Using MiniKit Native Verify...');
+          const result = await MiniKit.commands.verify({
+            action: action.trim(),
+            signal: signal.trim(),
+            verification_level: isProduction ? MiniKitVerificationLevel.Orb : MiniKitVerificationLevel.Device,
+          });
 
-        console.log('[Headless] Using PORTAL RP_ID:', rpId);
+          if (result.finalPayload.status === 'error') {
+            throw new Error(result.finalPayload.details || 'Native verification failed');
+          }
 
-        // Mock context for hackathon fallback
-        const now = Math.floor(Date.now() / 1000);
-        const mockRpContext = {
-          rp_id: rpId as `rp_${string}`,
-          nonce: Array.from(crypto.getRandomValues(new Uint8Array(32)))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join(''),
-          created_at: now,
-          expires_at: now + 3600,
-          signature: '0x' + '0'.repeat(130) // Standard 65-byte zero signature
-        };
+          console.log('[WorldID] MiniKit Success!');
+          setStatus('success');
+          onSuccess(result.finalPayload);
+          return;
+        }
 
+        // 3. FALLBACK: Use IDKit Core (Good for Simulator/External Browser)
+        console.log('[WorldID] MiniKit not found, falling back to IDKit Core Bridge...');
+        
         const builder = IDKit.request({
-          app_id: cleanAppId as `app_${string}`,
+          app_id: appId as `app_${string}`,
           action: action.trim(),
-          rp_context: mockRpContext,
-          allow_legacy_proofs: true,
-          environment: 'staging'
+          signal: signal.trim(),
+          environment: env,
+          verification_level: isProduction ? 'orb' : 'device',
         });
 
-        // Use modern V4 constraints instead of Legacy presets
-        // This is the correct way for World ID 4.0 on Mainnet
-        const request = await builder.constraints(
-          IDKit.CredentialRequest('proof_of_human', { 
-            signal: signal.toLowerCase() 
-          })
-        );
-
-        console.log('[Headless] Modal triggered with V4 constraints...');
-        
+        const request = await builder.request();
         const completion: IDKitCompletionResult = await request.pollUntilCompletion();
 
         if (completion.success) {
-          console.log('[Headless] SUCCESS!', completion.result);
+          console.log('[WorldID] IDKit Success!');
           setStatus('success');
           onSuccess(completion.result);
         } else {
-          throw new Error(completion.error || 'Verification failed');
+          throw new Error(completion.error || 'Bridge verification failed');
         }
       } catch (err: any) {
-        console.error('[Headless] Error:', err);
+        console.error('[WorldID] Generic Error:', err);
         setErrorMsg(err.message || 'Unknown error');
         setStatus('error');
         onError?.(err);
@@ -85,7 +86,7 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
   }, [appId, action, signal, onSuccess, onError]);
 
   if (!appId || appId === 'app_staging_placeholder') {
-    return <div style={{ padding: 20 }}>⚠️ Configuration Error</div>;
+    return <div style={{ padding: 20 }}>⚠️ Configuration Error: App ID missing</div>;
   }
 
   return (
@@ -98,15 +99,19 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
       marginTop: 24,
       backdropFilter: 'blur(20px)'
     }}>
-      <div className="animate-pulse" style={{ fontSize: 48, marginBottom: 20 }}>🛡️</div>
+      <div className={status === 'waiting' ? 'animate-pulse' : ''} style={{ fontSize: 48, marginBottom: 20 }}>
+        {status === 'success' ? '✅' : status === 'error' ? '❌' : '🛡️'}
+      </div>
       <h3 style={{ marginBottom: 12, fontSize: 20, fontWeight: 700 }}>
         {status === 'waiting' ? 'Verificando Identidad' : 
-         status === 'error' ? 'Verificación Fallida' : 'Preparando...'}
+         status === 'error' ? 'Verificación Fallida' : 
+         status === 'success' ? 'Identidad Verificada' : 'Preparando...'}
       </h3>
       
       <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
         {status === 'waiting' ? 'Confirma la solicitud en tu World App para continuar.' :
-         status === 'error' ? `Error: ${errorMsg}` : 'Inicializando puente seguro...'}
+         status === 'error' ? `Error: ${errorMsg}` : 
+         status === 'success' ? 'Has sido verificado como humano único.' : 'Inicializando puente seguro...'}
       </p>
 
       {status === 'error' && (
@@ -122,7 +127,9 @@ export default function WorldIDVerify({ appId, action, signal, onSuccess, onErro
       {status === 'waiting' && (
         <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div className="spinner" style={{ borderTopColor: 'var(--accent-indigo)' }}></div>
-          <span style={{ fontSize: 10, marginTop: 12, letterSpacing: '2px', opacity: 0.5 }}>CONNECTING TO BRIDGE</span>
+          <span style={{ fontSize: 10, marginTop: 12, letterSpacing: '2px', opacity: 0.5 }}>
+            {MiniKit.isInstalled() ? 'WAITING FOR NATIVE MODAL' : 'CONNECTING TO BRIDGE'}
+          </span>
         </div>
       )}
     </div>
