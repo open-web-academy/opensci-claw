@@ -4,7 +4,7 @@ import { getAuthorPapersFromChain, getPaperFromChain } from '../services/contrac
 
 const authors = new Hono();
 
-import { savePaperMetadata } from '../services/supabase.js';
+import { savePaperMetadata, getPapersByAuthor } from '../services/supabase.js';
 
 // Registers an author after verifying their World ID proof server-side.
 authors.post('/register', async (c) => {
@@ -118,8 +118,8 @@ authors.get('/:address/papers', async (c) => {
     console.warn('Failed to fetch from chain, defaulting to mock data only', err);
   }
 
-  // 2. Fetch from Mock DB (Off-Chain)
-  const offchainResults = MOCK_DB_PAPERS.filter(p => p.wallet === address.toLowerCase());
+  // 2. Fetch from Supabase Cloud (Off-Chain Metadata)
+  const offchainResults = await getPapersByAuthor(address);
 
   // 3. Merge results
   const results = [...offchainResults, ...blockchainResults];

@@ -59,6 +59,24 @@ export async function getPaperMetadata(paperId: string): Promise<PaperMetadata |
     console.error(`--- SUPABASE GET ERROR: ${error.message} ---`);
     return null;
   }
-
   return data as PaperMetadata;
+}
+
+/**
+ * Retrieves all papers registered by a specific author wallet
+ */
+export async function getPapersByAuthor(wallet: string): Promise<PaperMetadata[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from('papers')
+    .select('*')
+    .eq('author', wallet.toLowerCase());
+
+  if (error) {
+    console.error(`--- SUPABASE AUTHOR SEARCH ERROR: ${error.message} ---`);
+    return [];
+  }
+
+  return data || [];
 }
