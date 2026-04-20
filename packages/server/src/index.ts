@@ -284,17 +284,20 @@ app.post('/api/world-id/rp-context', async (c) => {
       return c.json({ error: 'RP Configuration missing' }, 500);
     }
 
-    const rpContext = await signRequest(
-      WORLD_ID_RP_ID,
-      WORLD_ID_SIGNING_KEY,
-      {
-        app_id,
-        action,
-        signal: signal ?? '',
-      }
-    );
+    const sigData = signRequest({
+      signingKeyHex: WORLD_ID_SIGNING_KEY,
+      action: action,
+    });
 
-    console.log(`[WorldID] RP Context generated for app: ${app_id}`);
+    const rpContext = {
+      rp_id: WORLD_ID_RP_ID,
+      nonce: sigData.nonce,
+      signature: sigData.sig,
+      created_at: sigData.createdAt,
+      expires_at: sigData.expiresAt,
+    };
+
+    console.log(`[WorldID] RP Context generated for action: ${action}`);
     return c.json(rpContext);
   } catch (err: any) {
     console.error('[WorldID] Failed to sign request:', err);
