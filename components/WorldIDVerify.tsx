@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { MiniKit } from '@worldcoin/minikit-js';
 
 interface WorldIDVerifyProps {
+  appId: string;
+  action: string;
+  signal: string;
   onSuccess: (result: any) => void;
   onError?: (err: any) => void;
 }
@@ -13,7 +16,7 @@ interface WorldIDVerifyProps {
  * Utiliza el comando nativo de MiniKit para autenticar al usuario.
  * No abre pestañas externas y es 100% compatible con World App Bridge.
  */
-export default function WorldIDVerify({ onSuccess, onError }: WorldIDVerifyProps) {
+export default function WorldIDVerify({ appId, action, signal, onSuccess, onError }: WorldIDVerifyProps) {
   const [status, setStatus] = useState<'idle' | 'waiting' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
