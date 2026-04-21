@@ -209,8 +209,8 @@ const manualX402Middleware: MiddlewareHandler = async (c, next) => {
   }
 
   // 2. HACKATHON BYPASS: If client sends a payment proof header, skip the challenge
-  const paymentProof = c.req.header('x-payment-proof');
-  if (paymentProof && (paymentProof.length > 5 || paymentProof === 'demo_bypass')) {
+  const paymentProof = c.req.header('x-payment-proof') || c.req.header('PAYMENT-SIGNATURE');
+  if (paymentProof && (paymentProof.length > 5 || paymentProof === 'demo_bypass' || paymentProof === 'bypass')) {
     console.log(`[x402] Payment bypass triggered: ${paymentProof.slice(0, 8)}... Unlocking request.`);
     return await next();
   }

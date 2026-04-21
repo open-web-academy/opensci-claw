@@ -39,7 +39,7 @@ export default function AgentControl({ paymentSignature, serverUrl, initialTopic
   const handleStartFlow = async (queryTopic: string) => {
     if (!queryTopic.trim()) return;
 
-    setLogs([]);
+    setLogs([{ status: 'searching', message: 'Initializing connection to NanoClaw node...' }]);
     setIsWorking(true);
     setFinalAnswer(null);
 
@@ -50,7 +50,10 @@ export default function AgentControl({ paymentSignature, serverUrl, initialTopic
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          ...(paymentSignature ? { 'PAYMENT-SIGNATURE': paymentSignature } : {})
+          ...(paymentSignature ? { 
+            'PAYMENT-SIGNATURE': paymentSignature,
+            'x-payment-proof': paymentSignature === 'bypass' ? 'demo_bypass' : paymentSignature
+          } : {})
         },
         body: JSON.stringify({ topic: queryTopic }),
       });
