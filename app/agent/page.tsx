@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import PayLinkCard from '@/components/PayLinkCard';
 import AgentControl from '@/components/AgentControl';
 
@@ -12,10 +13,6 @@ interface AgentMetadata {
   description: string;
 }
 
-/**
- * Global Agent Portal (Search-First Redesign)
- * A premium autonomous research interface with tiered access.
- */
 export default function AgentGatePage() {
   const [query, setQuery] = useState('');
   const [isSearched, setIsSearched] = useState(false);
@@ -23,8 +20,23 @@ export default function AgentGatePage() {
   const [loading, setLoading] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
-
+  
+  const heroRef = useRef<HTMLDivElement>(null);
   const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+
+  // Replicate the mouse following effect from the Home page
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!heroRef.current) return;
+      const rect = heroRef.current.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      heroRef.current.style.setProperty('--mx', `${x}%`);
+      heroRef.current.style.setProperty('--my', `${y}%`);
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,12 +44,10 @@ export default function AgentGatePage() {
 
     setLoading(true);
     try {
-      // Fetch metadata for both tiers
       const [resBasic, resFull] = await Promise.all([
         fetch(`${SERVER_URL}/papers/agent-query/metadata`),
         fetch(`${SERVER_URL}/papers/agent-full/metadata`)
       ]);
-
       const [basic, full] = await Promise.all([resBasic.json(), resFull.json()]);
 
       setTiers([
@@ -65,94 +75,124 @@ export default function AgentGatePage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#080b14] flex flex-col items-center justify-start p-6 selection:bg-indigo-500/30 overflow-x-hidden relative">
-      {/* Background Decorative Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-500/5 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-emerald-500/5 rounded-full blur-[120px]"></div>
-      </div>
+    <>
+      {/* ── Navbar (Native Platform Style) ─────────────────────────── */}
+      <nav>
+        <div className="nav-inner">
+          <Link href="/" className="nav-logo">⬡ SciGate</Link>
+          <ul className="nav-links">
+            <li><Link href="/explore">Explore</Link></li>
+            <li><Link href="/upload">Publish</Link></li>
+            <li><Link href="/dashboard">Dashboard</Link></li>
+          </ul>
+        </div>
+      </nav>
 
-      <div className="w-full max-w-6xl flex flex-col items-center relative z-10 pt-20">
-        {!unlocked ? (
-          <div className="w-full max-w-4xl flex flex-col items-center">
-            {/* Header Section */}
-            <div className="text-center mb-16 animate-in fade-in slide-in-from-top-4 duration-1000">
-               <span className="text-indigo-400 text-[10px] font-black uppercase tracking-[8px] mb-4 block">SciGate Autonomous Hub</span>
-               <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-6 font-['Space_Grotesk']">
-                 Meet <span className="bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">NanoClaw</span>
-               </h1>
-               <p className="text-white/30 text-lg max-w-xl mx-auto leading-relaxed">
-                 The world's first agentic research node secured by x402. High-precision intelligence at the edge.
-               </p>
-            </div>
+      <main 
+        ref={heroRef}
+        style={{
+          minHeight: '100vh',
+          background: 'var(--bg-primary)',
+          position: 'relative',
+          overflow: 'hidden',
+          paddingTop: '120px',
+          paddingBottom: '80px'
+        }}
+      >
+        {/* Background Glowing Orbs (Native Style) */}
+        <div className="hero-glow" style={{ width: 600, height: 600, top: '-100px', left: '-100px', background: 'rgba(99,102,241,0.12)' }} />
+        <div className="hero-glow" style={{ width: 400, height: 400, bottom: 0, right: '-50px', background: 'rgba(139,92,246,0.08)', animationDelay: '2s' }} />
+        <div className="hero-glow" style={{ width: 300, height: 300, top: '20%', right: '20%', background: 'rgba(6,182,212,0.06)', animationDelay: '1s' }} />
 
-            {/* Stage 1: Search Bar */}
-            {!isSearched ? (
-              <form onSubmit={handleSearch} className="w-full max-w-2xl relative group animate-in fade-in zoom-in duration-700">
-                <input 
-                   value={query}
-                   onChange={(e) => setQuery(e.target.value)}
-                   placeholder="Ask anything (e.g. LLM hardware requirements...)"
-                   className="w-full h-20 bg-white/[0.03] border border-white/10 rounded-[24px] px-8 text-xl text-white outline-none focus:border-indigo-500/50 focus:bg-white/[0.05] transition-all font-medium placeholder:text-white/10 shadow-2xl"
-                />
-                <button 
-                  type="submit"
-                  disabled={loading || !query.trim()}
-                  className="absolute right-4 top-4 bottom-4 px-8 bg-white text-black font-black rounded-xl hover:bg-indigo-500 hover:text-white transition-all disabled:opacity-20 text-xs tracking-widest font-['Space_Grotesk']"
-                >
-                  {loading ? 'SYNCING...' : 'INITIATE'}
-                </button>
-              </form>
-            ) : (
-              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                 {/* Stage 2: Selection Cards */}
-                 {tiers.map((tier) => (
-                   <div key={tier.id} className="flex flex-col gap-6">
-                      <div className="px-6 py-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                         <h3 className="text-white font-bold font-['Space_Grotesk'] text-sm uppercase tracking-wider">{tier.title}</h3>
-                         <p className="text-white/30 text-[11px] mt-1">{tier.description}</p>
-                      </div>
-                      <PayLinkCard 
-                        paperId={tier.id}
-                        title={tier.title}
-                        author={tier.author}
-                        priceUsdc={tier.priceUsdc}
-                        serverUrl={SERVER_URL}
-                        onUnlock={(sig) => {
-                          setSignature(sig);
-                          setUnlocked(true);
-                        }}
-                      />
-                   </div>
-                 ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="w-full animate-in fade-in slide-in-from-bottom-8 duration-1000">
-             <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-12">
-                <div>
-                   <span className="badge badge-verified mb-4">Secured Session: {signature?.slice(0,10)}...</span>
-                   <h2 className="text-4xl font-black text-white font-['Space_Grotesk'] tracking-tight">Investigating: <span className="text-indigo-400">"{query}"</span></h2>
+        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+          {!unlocked ? (
+            <div className="animate-fade-in-up flex flex-col items-center">
+              <div className="text-center mb-12">
+                <div className="badge badge-indigo" style={{ marginBottom: 24 }}>
+                   <span>🤖</span> Edge Intelligence Gated by x402
                 </div>
-                <button onClick={() => window.location.reload()} className="text-[10px] text-white/20 uppercase tracking-[2px] hover:text-white transition-colors">Terminate Session</button>
-             </div>
-             
-             <div className="w-full bg-white/[0.01] border border-white/5 rounded-[40px] p-8 backdrop-blur-3xl shadow-2xl">
-                <AgentControl 
-                  paymentSignature={signature!} 
-                  serverUrl={SERVER_URL} 
-                />
-             </div>
-          </div>
-        )}
-      </div>
+                <h1 style={{ fontSize: 'clamp(40px, 6vw, 72px)', marginBottom: 20 }}>
+                  Meet <span className="gradient-text">NanoClaw</span>
+                </h1>
+                <p style={{ color: 'var(--text-secondary)', maxWidth: 600, margin: '0 auto', fontSize: '18px' }}>
+                  The world's first agentic research node. Secured by World Chain and monetized through autonomous handshakes.
+                </p>
+              </div>
 
-      {/* Footer Branding */}
-      <div className="mt-20 py-12 border-t border-white/5 w-full flex flex-col items-center gap-4 opacity-20">
-         <span className="text-[10px] font-black tracking-[10px] text-white font-['Space_Grotesk'] uppercase">SciGate x402 Protocol</span>
-         <p className="text-[9px] text-white/40 uppercase">Edge AI Node Active in Northern Mexico</p>
-      </div>
-    </main>
+              {!isSearched ? (
+                <div className="w-full max-w-2xl">
+                   <form onSubmit={handleSearch} className="search-form">
+                      <input 
+                        className="input"
+                        style={{ height: '60px', fontSize: '16px', paddingLeft: '24px' }}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="What should the researcher investigate?"
+                        disabled={loading}
+                      />
+                      <button type="submit" className="btn-primary" disabled={loading || !query.trim()}>
+                        {loading ? 'Initializing...' : 'Research'}
+                      </button>
+                   </form>
+                   <div style={{ textAlign: 'center', opacity: 0.3 }}>
+                      <span style={{ fontSize: '10px', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 800 }}>Autonomous Loop v2.5</span>
+                   </div>
+                </div>
+              ) : (
+                <div className="grid-responsive split" style={{ width: '100%', maxWidth: '1000px' }}>
+                   {tiers.map((tier) => (
+                     <div key={tier.id} className="animate-fade-in-up">
+                        <div className="card" style={{ marginBottom: 24 }}>
+                           <h3 style={{ fontSize: '18px', marginBottom: 8, color: 'var(--text-primary)' }}>{tier.title}</h3>
+                           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{tier.description}</p>
+                           <div style={{ marginTop: 16 }}>
+                              <span className="badge badge-verified" style={{ fontSize: '10px' }}>
+                                Tier Access: {tier.priceUsdc} USDC
+                              </span>
+                           </div>
+                        </div>
+                        <PayLinkCard 
+                          paperId={tier.id}
+                          title={tier.title}
+                          author={tier.author}
+                          priceUsdc={tier.priceUsdc}
+                          serverUrl={SERVER_URL}
+                          onUnlock={(sig) => {
+                            setSignature(sig);
+                            setUnlocked(true);
+                          }}
+                        />
+                     </div>
+                   ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="animate-fade-in-up">
+               <div className="card" style={{ marginBottom: 48, padding: '40px', textAlign: 'center' }}>
+                  <div className="badge badge-verified" style={{ marginBottom: 16 }}>
+                    Session Established: {signature?.slice(0,12)}...
+                  </div>
+                  <h2 style={{ fontSize: '32px', marginBottom: 8 }}>Investigating</h2>
+                  <p className="gradient-text" style={{ fontSize: '24px', fontWeight: 800 }}>"{query}"</p>
+               </div>
+               
+               <div className="card" style={{ padding: 0, overflow: 'hidden', background: 'rgba(13,17,23,0.8)' }}>
+                  <AgentControl 
+                    paymentSignature={signature!} 
+                    serverUrl={SERVER_URL} 
+                  />
+               </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      <footer style={{ borderTop: '1px solid var(--border)', padding: '40px 0', background: 'var(--bg-secondary)', position: 'relative', zIndex: 1 }}>
+        <div className="container" style={{ textAlign: 'center', opacity: 0.3 }}>
+           <span style={{ fontSize: '10px', letterSpacing: '8px', fontWeight: 900, textTransform: 'uppercase' }}>SciGate x402 Ecosystem</span>
+        </div>
+      </footer>
+    </>
   );
 }

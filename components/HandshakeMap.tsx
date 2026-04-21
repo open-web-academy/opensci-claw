@@ -36,9 +36,9 @@ export default function HandshakeMap({ logs, status }: HandshakeMapProps) {
   ];
 
   return (
-    <div className="w-full bg-[#050505] border border-white/5 rounded-[32px] p-8 overflow-hidden relative">
+    <div className="w-full bg-black/40 border border-white/5 rounded-[24px] p-8 overflow-hidden relative backdrop-blur-sm">
       {/* Connector lines (Global background) */}
-      <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-white/5 -translate-y-1/2 hidden md:block"></div>
+      <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/5 -translate-y-1/2 hidden md:block"></div>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-8 relative z-10">
         {steps.map((step, i) => {
@@ -49,9 +49,9 @@ export default function HandshakeMap({ logs, status }: HandshakeMapProps) {
           
           return (
             <div key={step.id} className="flex flex-col items-center text-center group">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl transition-all duration-500 border shadow-2xl ${
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-xl transition-all duration-500 border shadow-2xl ${
                 isActive 
-                  ? 'bg-indigo-500 border-indigo-400 shadow-indigo-500/40 scale-110' 
+                  ? 'bg-indigo-500 border-indigo-400 shadow-indigo-500/20 scale-110' 
                   : 'bg-white/5 border-white/10 opacity-30 group-hover:opacity-100'
               }`}>
                 {step.icon}
@@ -60,7 +60,7 @@ export default function HandshakeMap({ logs, status }: HandshakeMapProps) {
                 )}
               </div>
               <div className="mt-4">
-                <span className={`text-[10px] font-black uppercase tracking-[2px] transition-colors ${isActive ? 'text-indigo-400' : 'text-white/20'}`}>
+                <span className={`text-[9px] font-black uppercase tracking-[2px] transition-colors ${isActive ? 'text-indigo-400' : 'text-white/20'}`}>
                   {step.label}
                 </span>
                 <p className="text-[9px] text-white/10 font-mono mt-1 group-hover:text-white/40 transition-colors uppercase">
@@ -88,7 +88,7 @@ export default function HandshakeMap({ logs, status }: HandshakeMapProps) {
              <span className={
                log.type === 'success' ? 'text-emerald-400' : 
                log.type === 'warn' ? 'text-amber-400' : 
-               log.type === 'error' ? 'text-red-400' : ''
+               log.type === 'error' ? 'text-red-400' : 'text-white/40'
              }>
                {log.msg}
              </span>

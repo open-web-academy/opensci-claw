@@ -179,13 +179,13 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
 
   if (status === 'unlocked' && content) {
     return (
-      <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-[32px] p-8 shadow-2xl animate-in fade-in zoom-in duration-500">
+      <div className="card w-full max-w-2xl animate-fade-in-up">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center text-xl">✓</div>
-          <h2 className="text-xl font-bold text-white">Full Access Granted</h2>
+          <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-xl">✓</div>
+          <h2 className="text-xl font-bold">Full Access Granted</h2>
         </div>
         <div className="prose prose-invert max-w-none">
-          <p className="text-white/70 whitespace-pre-wrap font-mono text-sm leading-relaxed bg-white/5 p-6 rounded-2xl border border-white/5">
+          <p className="text-white/70 whitespace-pre-wrap font-mono text-sm leading-relaxed p-6 rounded-2xl border border-white/5 bg-black/20">
             {content}
           </p>
         </div>
@@ -194,39 +194,38 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
   }
 
   return (
-    <div className="w-full max-w-md card relative overflow-hidden group border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent">
-      {/* Background Glows (Platform Style) */}
-      <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] group-hover:bg-indigo-500/20 transition-all duration-1000"></div>
-      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none"></div>
+    <div className="card w-full max-w-md relative overflow-hidden group">
+      {/* Platform Decor */}
+      <div className="hero-glow" style={{ width: 300, height: 300, top: '-150px', right: '-150px', background: 'rgba(99,102,241,0.1)' }} />
       
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-10">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-indigo-700 flex items-center justify-center text-3xl shadow-[0_0_30px_rgba(99,102,241,0.3)] border border-white/20">
+          <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl shadow-xl">
             📄
           </div>
           <div className="text-right">
-            <span className="text-[10px] uppercase tracking-[4px] font-black text-indigo-400/80 block mb-1 font-['Space_Grotesk']">Bounty</span>
-            <span className="text-3xl font-black text-white tracking-tighter font-['Space_Grotesk']">
+            <span className="text-[10px] uppercase tracking-[4px] font-black text-indigo-400 block mb-1">Bounty</span>
+            <span className="gradient-text text-3xl font-black tracking-tighter">
               {priceUsdc} <span className="text-xs text-white/30 font-medium">USDC</span>
             </span>
           </div>
         </div>
 
         <div className="mb-8">
-           <span className="badge badge-indigo mb-3">⬡ Verified Paper</span>
-           <h1 className="text-2xl font-bold text-white mb-2 leading-tight font-['Space_Grotesk']">
+           <span className="badge badge-verified mb-3">⬡ Verified Paper</span>
+           <h1 className="text-2xl font-bold mb-2 leading-tight">
             {title}
            </h1>
-           <div className="flex items-center gap-2 group/author cursor-help">
+           <div className="flex items-center gap-2">
              <span className="text-[10px] text-white/30 uppercase tracking-[2px] font-bold">Author:</span>
-             <span className="text-[11px] font-mono text-indigo-300/60 group-hover/author:text-indigo-300 transition-colors">
+             <span className="text-[11px] font-mono text-indigo-300/60">
                {author.slice(0, 8)}...{author.slice(-6)}
              </span>
            </div>
         </div>
 
         {status === 'error' && (
-          <div className="p-4 bg-red-500/10 border border-red-500/10 rounded-xl text-red-400 text-[11px] mb-8 animate-shake font-medium flex gap-3 items-center">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-[11px] mb-6 animate-pulse font-medium flex gap-3 items-center">
              <span className="text-lg">⚠️</span> {errorMsg}
           </div>
         )}
@@ -235,36 +234,15 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
           <button
             onClick={handleUnlock}
             disabled={status === 'charging' || status === 'verifying'}
-            className="w-full h-16 bg-white hover:bg-gray-100 disabled:bg-white/5 disabled:text-white/10 text-black font-black rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 relative overflow-hidden group/btn font-['Space_Grotesk'] text-sm tracking-widest"
+            className="btn-primary w-full h-16 relative overflow-hidden"
           >
-            {status === 'charging' ? 'INITIATING X402...' : 
-            status === 'verifying' ? 'FINAL HANDSHAKE...' : 
-            'PURCHASE ACCESS'}
-            
+            <span className="relative z-10">
+              {status === 'charging' ? 'INITIATING HANDSHAKE...' : 
+               status === 'verifying' ? 'FINAL VERIFICATION...' : 
+               'PURCHASE NOW'}
+            </span>
             {(status === 'idle' || status === 'error') && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:animate-shimmer"></div>
-            )}
-          </button>
-        )}
-
-        {status === 'error' && (
-          <div className="p-4 bg-red-500/10 border border-red-500/10 rounded-xl text-red-400 text-[11px] mb-6 animate-shake font-medium flex gap-3 items-center">
-             <span className="text-lg">⚠️</span> {errorMsg}
-          </div>
-        )}
-
-        {status !== 'unlocked' && (
-          <button
-            onClick={handleUnlock}
-            disabled={status === 'charging' || status === 'verifying'}
-            className="w-full h-16 bg-white hover:bg-gray-100 disabled:bg-white/5 disabled:text-white/10 text-black font-black rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 relative overflow-hidden group/btn font-['Space_Grotesk'] text-sm tracking-widest mb-6"
-          >
-            {status === 'charging' ? 'INITIATING X402...' : 
-            status === 'verifying' ? 'FINAL HANDSHAKE...' : 
-            'PURCHASE NOW'}
-            
-            {(status === 'idle' || status === 'error') && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:animate-shimmer"></div>
+              <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '2s' }}></div>
             )}
           </button>
         )}
