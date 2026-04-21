@@ -163,7 +163,7 @@ const app = new Hono();
 
 app.use('*', cors({
   origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization', 'PAYMENT-SIGNATURE'],
+  allowHeaders: ['Content-Type', 'Authorization', 'PAYMENT-SIGNATURE', 'x-payment-proof'],
   exposeHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
 }));
 
