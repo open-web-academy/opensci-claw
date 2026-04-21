@@ -11,22 +11,32 @@ interface ProgressEvent {
 interface AgentControlProps {
   paymentSignature?: string;
   serverUrl?: string;
+  initialTopic?: string;
 }
 
-export default function AgentControl({ paymentSignature, serverUrl }: AgentControlProps) {
-  const [topic, setTopic] = useState('');
+export default function AgentControl({ paymentSignature, serverUrl, initialTopic }: AgentControlProps) {
+  const [topic, setTopic] = useState(initialTopic || '');
   const [logs, setLogs] = useState<ProgressEvent[]>([]);
   const [isWorking, setIsWorking] = useState(false);
   const [finalAnswer, setFinalAnswer] = useState<any>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+  const hasStartedRef = useRef(false);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  const startAgent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!topic.trim()) return;
+  // Auto-start if initialTopic is provided
+  useEffect(() => {
+    if (initialTopic && paymentSignature && !hasStartedRef.current) {
+      hasStartedRef.current = true;
+      // Trigger startAgent manually without an event
+      handleStartFlow(initialTopic);
+    }
+  }, [initialTopic, paymentSignature]);
+
+  const handleStartFlow = async (queryTopic: string) => {
+    if (!queryTopic.trim()) return;
 
     setLogs([]);
     setIsWorking(true);
@@ -41,7 +51,7 @@ export default function AgentControl({ paymentSignature, serverUrl }: AgentContr
           'Content-Type': 'application/json',
           ...(paymentSignature ? { 'PAYMENT-SIGNATURE': paymentSignature } : {})
         },
-        body: JSON.stringify({ topic }),
+        body: JSON.stringify({ topic: queryTopic }),
       });
 
       if (!response.body) throw new Error('No response stream');
@@ -78,6 +88,11 @@ export default function AgentControl({ paymentSignature, serverUrl }: AgentContr
       setLogs((prev) => [...prev, { status: 'error', message: err.message }]);
       setIsWorking(false);
     }
+  };
+
+  const startAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    handleStartFlow(topic);
   };
 
   const currentStatus = logs[logs.length - 1]?.status || 'idle';

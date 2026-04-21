@@ -181,6 +181,7 @@ export default function AgentGatePage() {
                   <AgentControl 
                     paymentSignature={signature!} 
                     serverUrl={SERVER_URL} 
+                    initialTopic={query}
                   />
                </div>
             </div>
