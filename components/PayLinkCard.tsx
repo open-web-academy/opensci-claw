@@ -25,13 +25,14 @@ interface PayLinkCardProps {
   author: string;
   priceUsdc: string;
   serverUrl: string;
+  onUnlock?: (signature: string) => void;
 }
 
 /**
  * PayLinkCard (Minimalista)
  * Maneja el flujo de pago x402 de forma directa.
  */
-export default function PayLinkCard({ paperId, title, author, priceUsdc, serverUrl }: PayLinkCardProps) {
+export default function PayLinkCard({ paperId, title, author, priceUsdc, serverUrl, onUnlock }: PayLinkCardProps) {
   const [status, setStatus] = useState<'idle' | 'charging' | 'verifying' | 'unlocked' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [content, setContent] = useState<string | null>(null);
@@ -51,15 +52,29 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
       setLogs([]);
 
       // 1. Intentar acceder al recurso para obtener el desafío 402 si no lo tenemos
-      addLog('Iniciando Handshake HTTP...', 'info', `GET ${serverUrl}/papers/${paperId}/full`);
-      const initialRes = await fetch(`${serverUrl}/papers/${paperId}/full`);
+      const probeUrl = paperId === 'agent' 
+        ? `${serverUrl}/agent/ask` 
+        : `${serverUrl}/papers/${paperId}/full`;
+
+      addLog('Iniciando Handshake HTTP...', 'info', `GET ${probeUrl}`);
+      
+      const probeHeaders: any = { 'Content-Type': 'application/json' };
+      const probeBody = paperId === 'agent' ? JSON.stringify({ topic: 'probe' }) : undefined;
+      const probeMethod = paperId === 'agent' ? 'POST' : 'GET';
+
+      const initialRes = await fetch(probeUrl, {
+        method: probeMethod,
+        headers: probeHeaders,
+        body: probeBody
+      });
       
       // Si el servidor ya nos da el contenido (ej. ya pagamos o bypass), lo mostramos
       if (initialRes.status === 200) {
         addLog('Conexión establecida. Acceso directo concedido.', 'success');
         const data = await initialRes.json();
-        setContent(data.full_text);
+        if (paperId !== 'agent') setContent(data.full_text);
         setStatus('unlocked');
+        if (onUnlock) onUnlock('bypass');
         return;
       }
 
@@ -123,10 +138,17 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
       setStatus('verifying');
 
       // 4. Re-intentar con la firma del pago (PAYMENT-SIGNATURE)
-      const finalRes = await fetch(`${serverUrl}/papers/${paperId}/full`, {
+      const verifyUrl = paperId === 'agent' 
+        ? `${serverUrl}/agent/ask` 
+        : `${serverUrl}/papers/${paperId}/full`;
+      
+      const finalRes = await fetch(verifyUrl, {
+        method: probeMethod,
         headers: {
+          ...probeHeaders,
           'PAYMENT-SIGNATURE': txId
-        }
+        },
+        body: probeBody
       });
 
       if (!finalRes.ok) {
@@ -137,8 +159,9 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
 
       addLog('Verificación Completada. ¡Acceso Total!', 'success');
       const finalData = await finalRes.json();
-      setContent(finalData.full_text);
+      if (paperId !== 'agent') setContent(finalData.full_text);
       setStatus('unlocked');
+      if (onUnlock) onUnlock(txId);
 
     } catch (err: any) {
       addLog(`Fallo en el protocolo: ${err.message}`, 'error');

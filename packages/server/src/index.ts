@@ -133,6 +133,14 @@ const routes = {
       mode: { type: 'free-trial' as const, uses: FREE_TRIAL_FULL },
     }),
   },
+  // $0.05 — Global Agent Access
+  'POST /agent/ask': {
+    accepts: makeAccepts('0.05'),
+    extensions: declareAgentkitExtension({
+      statement: 'Access the NanoClaw Global AI Researcher across all documents',
+      mode: { type: 'free-trial' as const, uses: 1 },
+    }),
+  },
 };
 
 // ── Build the HTTP server with hooks ───────────────────────────────────────
@@ -357,6 +365,50 @@ app.get('/papers/:id/data', async (c) => {
   const paperId = c.req.param('id');
   const { data, status } = await handleData(paperId);
   return c.json(data, status as any);
+});
+
+// ── Global Agent Proxy (Gated) ──────────────────────────────────────────────
+app.post('/agent/ask', async (c) => {
+  try {
+    const { topic } = await c.req.json();
+    const { RAG_SERVICE_URL } = await import('./config.js');
+
+    console.log(`[AgentGated] Proxying to Pi: ${RAG_SERVICE_URL}/ask-agent`);
+
+    // Connect to Raspberry Pi RAG
+    const response = await fetch(`${RAG_SERVICE_URL}/ask-agent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic }),
+    });
+
+    if (!response.ok) {
+      return c.json({ error: 'RAG service error' }, 500);
+    }
+
+    // Set up SSE stream
+    c.header('Content-Type', 'text/event-stream');
+    c.header('Cache-Control', 'no-cache');
+    c.header('Connection', 'keep-alive');
+
+    return c.stream(async (stream) => {
+      const reader = response.body?.getReader();
+      if (!reader) return;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await stream.write(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    });
+
+  } catch (err: any) {
+    console.error('[AgentGated] Error:', err);
+    return c.json({ error: 'Failed to proxy request' }, 500);
+  }
 });
 
 // ────────────────────────────────────────────────────────────────────────────

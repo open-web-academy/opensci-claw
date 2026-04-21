@@ -61,6 +61,21 @@ papers.get('/search', async (c) => {
 papers.get('/:id/metadata', async (c) => {
   const id = c.req.param('id') as `0x${string}`;
 
+  // 0. SPECIAL CASE: Virtual Agent Metadata
+  if (id === 'agent' as any) {
+    return c.json({
+      contentHash: 'agent',
+      author: PAY_TO_ADDRESS,
+      title: 'NanoClaw Global AI Researcher',
+      description: 'Access the autonomous research agent across the entire document catalog.',
+      pricePerQuery: '50000', // $0.05
+      pricePerFull: '50000',  // Single access price
+      active: true,
+      source: 'virtual',
+      isAgent: true
+    });
+  }
+
   // 1. PRIMARY SOURCE: Supabase Cloud (Fastest)
   const cloudMeta = await getPaperMetadata(id);
   if (cloudMeta) {

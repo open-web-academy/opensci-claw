@@ -8,7 +8,12 @@ interface ProgressEvent {
   data?: any;
 }
 
-export default function AgentControl() {
+interface AgentControlProps {
+  paymentSignature?: string;
+  serverUrl?: string;
+}
+
+export default function AgentControl({ paymentSignature, serverUrl }: AgentControlProps) {
   const [topic, setTopic] = useState('');
   const [logs, setLogs] = useState<ProgressEvent[]>([]);
   const [isWorking, setIsWorking] = useState(false);
@@ -28,9 +33,14 @@ export default function AgentControl() {
     setFinalAnswer(null);
 
     try {
-      const response = await fetch('/api/agent/ask', {
+      const endpoint = serverUrl ? `${serverUrl}/agent/ask` : '/api/agent/ask';
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(paymentSignature ? { 'PAYMENT-SIGNATURE': paymentSignature } : {})
+        },
         body: JSON.stringify({ topic }),
       });
 
