@@ -165,91 +165,106 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
   }
 
   return (
-    <div className="w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-[40px] p-10 shadow-[0_0_50px_-12px_rgba(99,102,241,0.2)] backdrop-blur-xl relative overflow-hidden group">
-      {/* Background Glow */}
-      <div className="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
+    <div className="w-full max-w-md card relative overflow-hidden group border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent">
+      {/* Background Glows (Platform Style) */}
+      <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] group-hover:bg-indigo-500/20 transition-all duration-1000"></div>
+      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none"></div>
       
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-10">
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl shadow-xl shadow-indigo-500/20">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-indigo-700 flex items-center justify-center text-3xl shadow-[0_0_30px_rgba(99,102,241,0.3)] border border-white/20">
             📄
           </div>
           <div className="text-right">
-            <span className="text-[10px] uppercase tracking-[3px] font-black text-indigo-400 block mb-1">Price</span>
-            <span className="text-2xl font-black text-white">{priceUsdc} <span className="text-xs text-white/40">USDC</span></span>
+            <span className="text-[10px] uppercase tracking-[4px] font-black text-indigo-400/80 block mb-1 font-['Space_Grotesk']">Bounty</span>
+            <span className="text-3xl font-black text-white tracking-tighter font-['Space_Grotesk']">
+              {priceUsdc} <span className="text-xs text-white/30 font-medium">USDC</span>
+            </span>
           </div>
         </div>
 
-        <h1 className="text-2xl font-black text-white mb-3 leading-tight leading-tight">
-          {title}
-        </h1>
-        
-        <p className="text-white/40 text-xs mb-10 font-medium tracking-wide">
-          AUTHOR: <span className="text-white/60">{author.slice(0, 6)}...{author.slice(-4)}</span>
-        </p>
+        <div className="mb-8">
+           <span className="badge badge-indigo mb-3">⬡ Verified Paper</span>
+           <h1 className="text-2xl font-bold text-white mb-2 leading-tight font-['Space_Grotesk']">
+            {title}
+           </h1>
+           <div className="flex items-center gap-2 group/author cursor-help">
+             <span className="text-[10px] text-white/30 uppercase tracking-[2px] font-bold">Author:</span>
+             <span className="text-[11px] font-mono text-indigo-300/60 group-hover/author:text-indigo-300 transition-colors">
+               {author.slice(0, 8)}...{author.slice(-6)}
+             </span>
+           </div>
+        </div>
 
         {status === 'error' && (
-          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-xs mb-8 animate-shake">
-             ⚠️ {errorMsg}
+          <div className="p-4 bg-red-500/10 border border-red-500/10 rounded-xl text-red-400 text-[11px] mb-8 animate-shake font-medium flex gap-3 items-center">
+             <span className="text-lg">⚠️</span> {errorMsg}
           </div>
         )}
 
-        <button
-          onClick={handleUnlock}
-          disabled={status === 'charging' || status === 'verifying'}
-          className="w-full h-16 bg-white hover:bg-gray-100 disabled:bg-white/10 disabled:text-white/20 text-black font-black rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 relative overflow-hidden group/btn"
-        >
-          {status === 'charging' ? 'WAITING FOR WALLET...' : 
-           status === 'verifying' ? 'VERIFYING ON-CHAIN...' : 
-           'UNLOCK RESEARCH'}
-          
-          {status === 'idle' && (
-             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-shimmer"></div>
-          )}
-        </button>
+        {status !== 'unlocked' && (
+          <button
+            onClick={handleUnlock}
+            disabled={status === 'charging' || status === 'verifying'}
+            className="w-full h-16 bg-white hover:bg-gray-100 disabled:bg-white/5 disabled:text-white/10 text-black font-black rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 relative overflow-hidden group/btn font-['Space_Grotesk'] text-sm tracking-widest"
+          >
+            {status === 'charging' ? 'INITIATING X402...' : 
+            status === 'verifying' ? 'FINAL HANDSHAKE...' : 
+            'PURCHASE ACCESS'}
+            
+            {(status === 'idle' || status === 'error') && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/btn:animate-shimmer"></div>
+            )}
+          </button>
+        )}
 
-        {/* --- PROTOCOL HANDSHAKE VISUALIZER --- */}
+        {/* --- PREMIUM PROTOCOL HANDSHAKE VISUALIZER --- */}
         {showLogs && (
-          <div className="mt-8 border-t border-white/5 pt-6 animate-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center justify-between mb-4">
-               <span className="text-[9px] font-black tracking-[2px] text-white/30 uppercase">Protocol Log</span>
-               <div className="flex gap-1">
-                 <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>
-                 <div className="w-1 h-1 rounded-full bg-green-500/40"></div>
-                 <div className="w-1 h-1 rounded-full bg-green-500/20"></div>
+          <div className="mt-8 border-t border-white/5 pt-6 animate-in slide-in-from-bottom-4 duration-700">
+            <div className="flex items-center justify-between mb-5">
+               <div className="flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                 <span className="text-[9px] font-black tracking-[3px] text-white/40 uppercase font-['Space_Grotesk']">Deep Protocol Log</span>
                </div>
+               <div className="text-[9px] text-emerald-500/60 font-mono tracking-tighter">SECURE_NODE_ACTIVE</div>
             </div>
             
-            <div className="space-y-3 max-h-48 overflow-y-auto no-scrollbar">
+            <div className="space-y-4 max-h-[220px] overflow-y-auto no-scrollbar pb-2">
               {logs.map((log, i) => (
-                <div key={i} className="flex gap-3 items-start group/log">
-                  <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
-                    log.type === 'success' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
-                    log.type === 'warn' ? 'bg-amber-500' :
-                    log.type === 'error' ? 'bg-red-500' : 'bg-indigo-500'
+                <div key={i} className="flex gap-4 items-start group/log animate-in fade-in slide-in-from-left-2 duration-300" style={{ animationDelay: `${i * 0.1}s` }}>
+                  <div className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${
+                    log.type === 'success' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,1)]' :
+                    log.type === 'warn' ? 'bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]' :
+                    log.type === 'error' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-indigo-500/50'
                   }`} />
-                  <div className="flex flex-col gap-1">
-                    <p className={`text-[11px] font-bold ${
-                      log.type === 'success' ? 'text-green-400' :
-                      log.type === 'warn' ? 'text-amber-400' :
-                      log.type === 'error' ? 'text-red-400' : 'text-white/60'
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <p className={`text-[11px] font-bold tracking-tight ${
+                      log.type === 'success' ? 'text-emerald-400' :
+                      log.type === 'warn' ? 'text-amber-300' :
+                      log.type === 'error' ? 'text-red-400' : 'text-white/70'
                     }`}>
                       {log.msg}
                     </p>
                     {log.detail && (
-                      <p className="text-[9px] font-mono text-white/20 break-all leading-tight group-hover/log:text-white/40 transition-colors">
-                        {log.detail}
-                      </p>
+                      <div className="relative group/detail">
+                        <div className="absolute -left-2 top-0 bottom-0 w-[1px] bg-white/5 group-hover/detail:bg-indigo-500/20 transition-colors" />
+                        <p className="text-[9px] font-mono text-white/20 break-all leading-relaxed pl-2 group-hover/log:text-white/40 transition-colors uppercase tracking-tight">
+                          {log.detail}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
               ))}
+              <div className="h-4" /> {/* Spacer */}
             </div>
           </div>
         )}
 
-        <div className="mt-8 flex items-center justify-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
-           <span className="text-[8px] uppercase tracking-[4px] font-bold text-white">Secure x402 Protocol</span>
+        <div className="mt-8 flex items-center justify-center gap-3 opacity-10 group-hover:opacity-30 transition-all duration-500">
+           <div className="w-8 h-[1px] bg-white/50"></div>
+           <span className="text-[8px] uppercase tracking-[6px] font-black text-white whitespace-nowrap font-['Space_Grotesk']">x402 Protocol v2.4</span>
+           <div className="w-8 h-[1px] bg-white/50"></div>
         </div>
       </div>
     </div>
