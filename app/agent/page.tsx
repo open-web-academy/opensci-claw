@@ -20,6 +20,7 @@ export default function AgentGatePage() {
   const [loading, setLoading] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
+  const [activeTierId, setActiveTierId] = useState<string | null>(null);
   
   const heroRef = useRef<HTMLDivElement>(null);
   const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
@@ -159,6 +160,7 @@ export default function AgentGatePage() {
                           serverUrl={SERVER_URL}
                           onUnlock={(sig) => {
                             setSignature(sig);
+                            setActiveTierId(tier.id);
                             setUnlocked(true);
                           }}
                         />
@@ -182,6 +184,7 @@ export default function AgentGatePage() {
                     paymentSignature={signature!} 
                     serverUrl={SERVER_URL} 
                     initialTopic={query}
+                    mode={activeTierId === 'agent-query' ? 'query' : 'full'}
                   />
                </div>
             </div>

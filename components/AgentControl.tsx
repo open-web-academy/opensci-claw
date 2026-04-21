@@ -12,9 +12,10 @@ interface AgentControlProps {
   paymentSignature?: string;
   serverUrl?: string;
   initialTopic?: string;
+  mode?: 'query' | 'full';
 }
 
-export default function AgentControl({ paymentSignature, serverUrl, initialTopic }: AgentControlProps) {
+export default function AgentControl({ paymentSignature, serverUrl, initialTopic, mode = 'full' }: AgentControlProps) {
   const [topic, setTopic] = useState(initialTopic || '');
   const [logs, setLogs] = useState<ProgressEvent[]>([]);
   const [isWorking, setIsWorking] = useState(false);
@@ -43,7 +44,7 @@ export default function AgentControl({ paymentSignature, serverUrl, initialTopic
     setFinalAnswer(null);
 
     try {
-      const endpoint = serverUrl ? `${serverUrl}/agent/ask` : '/api/agent/ask';
+      const endpoint = serverUrl ? `${serverUrl}/agent/${mode}` : `/api/agent/${mode}`;
       
       const response = await fetch(endpoint, {
         method: 'POST',
