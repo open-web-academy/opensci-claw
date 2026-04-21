@@ -1,5 +1,6 @@
 import { Hono, MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
+import { stream } from 'hono/streaming';
 import { serve } from '@hono/node-server';
 
 console.log(`[CONFIG] Node Version: ${process.version}`);
@@ -391,7 +392,7 @@ app.post('/agent/ask', async (c) => {
     c.header('Cache-Control', 'no-cache');
     c.header('Connection', 'keep-alive');
 
-    return c.stream(async (stream) => {
+    return stream(c, async (stream) => {
       const reader = response.body?.getReader();
       if (!reader) return;
       try {
