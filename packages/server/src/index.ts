@@ -343,7 +343,8 @@ app.post('/api/world-id/rp-context', async (c) => {
     const sigData = signRequest({
       signingKeyHex: WORLD_ID_SIGNING_KEY,
       action: action,
-    });
+      signal: signal,
+    } as any);
 
     const rpContext = {
       rp_id: WORLD_ID_RP_ID,
