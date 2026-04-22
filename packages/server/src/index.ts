@@ -30,9 +30,13 @@ import {
 import {
   WORLD_CHAIN,
   BASE,
+  SOLANA,
   WORLD_USDC,
+  SOLANA_USDC,
   WORLD_FACILITATOR_URL,
+  SOLANA_FACILITATOR_URL,
   PAY_TO_ADDRESS,
+  PAY_TO_ADDRESS_SOLANA,
   PORT,
   PRICES,
   FREE_TRIAL_QUERY,
@@ -264,15 +268,28 @@ const manualX402Middleware: MiddlewareHandler = async (c, next) => {
       console.warn('[x402] Could not fetch dynamic author, falling back to default recipient.');
     }
 
-    const manualAccepts = [{
-      scheme: 'exact',
-      network: WORLD_CHAIN, 
-      asset: WORLD_USDC,    
-      amount: '10000',      
-      payTo: dynamicPayTo,
-      maxTimeoutSeconds: 3600,
-      extra: {}
-    }];
+    const manualAccepts = [
+      {
+        scheme: 'exact',
+        network: WORLD_CHAIN, 
+        asset: WORLD_USDC,    
+        amount: '10000',      
+        payTo: dynamicPayTo,
+        maxTimeoutSeconds: 3600,
+        extra: {}
+      },
+      {
+        scheme: 'exact',
+        network: SOLANA, 
+        asset: SOLANA_USDC,    
+        amount: '10000',      
+        payTo: PAY_TO_ADDRESS_SOLANA,
+        maxTimeoutSeconds: 3600,
+        extra: {
+          facilitatorUrl: SOLANA_FACILITATOR_URL
+        }
+      }
+    ];
 
     const paymentRequired = {
       x402Version: 2,
