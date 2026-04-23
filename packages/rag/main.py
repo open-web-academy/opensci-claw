@@ -14,7 +14,7 @@ from typing import Optional
 from services.pdf_parser import extract_text_and_metadata
 from services.chunker import split_text
 from services.embedder import create_embeddings, query_embeddings, get_sections, search_all
-from services.qa import answer_question
+from services.qa import answer_question, answer_question_with_x402_skill
 
 # ── Internal auth (optional) ─────────────────────────────────────────────────
 # The RAG service should only be reachable from the Hono gateway in production.
@@ -152,8 +152,12 @@ async def ask_agent(req: AgentRequest):
                 "message": "Processing knowledge and negotiating x402 access...",
             })
 
-            allow_buy = req.mode == "full"
-            final_answer = await answer_question(req.topic, [], allow_agent_buy=allow_buy)
+            if req.mode == "full":
+                # Full mode: Gemini function-calling with x402 skill (pays for external APIs).
+                final_answer = await answer_question_with_x402_skill(req.topic, [])
+            else:
+                # Query mode: lightweight path, no autonomous purchasing.
+                final_answer = await answer_question(req.topic, [], allow_agent_buy=False)
 
             yield sse({
                 "status": "done",
