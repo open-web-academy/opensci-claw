@@ -56,7 +56,7 @@ export default function UploadPage() {
     }
 
     try {
-      // A. Autenticar Wallet
+      // A. Autenticar Wallet (Usando la forma directa que pide el error)
       const authRes = await (MiniKit as any).walletAuth({
         nonce: Math.random().toString(36).substring(2),
         requestId: 'scigate_auth',
@@ -70,17 +70,12 @@ export default function UploadPage() {
         setIsVerifying(true);
 
         // B. Esperar un momento y lanzar World ID automáticamente
+        console.log('Wallet detected, launching World ID...');
         setTimeout(async () => {
           try {
-            const mini = (MiniKit as any);
-            // Probamos commands.verify primero, luego verify directo
-            const verifyFn = mini.commands?.verify || mini.verify;
-            
-            if (!verifyFn) {
-              throw new Error('Función de verificación no encontrada en esta versión de MiniKit');
-            }
-
-            const verifyRes = await verifyFn({
+            // Probamos verify directamente. 
+            // Si esto falla, es que el comando de verificación ha cambiado de nombre o no está disponible.
+            const verifyRes = await (MiniKit as any).verify({
               action: WORLD_ACTION_ID,
               signal: address.toLowerCase(),
               verification_level: 'device',
@@ -95,11 +90,11 @@ export default function UploadPage() {
             }
           } catch (vErr: any) {
             console.error('Verify Error:', vErr);
-            setError('Error de World ID: ' + (vErr.message || 'Error desconocido'));
+            setError('Error de World ID: ' + (vErr.message || 'Fallo en verify()'));
             setWalletConfirmed(false);
             setIsVerifying(false);
           }
-        }, 1000);
+        }, 1200);
       }
     } catch (err: any) {
       console.error('Auth Error:', err);
