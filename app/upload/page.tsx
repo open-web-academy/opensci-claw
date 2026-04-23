@@ -107,6 +107,7 @@ export default function UploadPage() {
       const idkitPayload = {
         app_id: WORLD_APP_ID,
         action: WORLD_ACTION_ID,
+        signal: address.toLowerCase(),
         rp_context: {
           rp_id: safeRpId,
           nonce: rpSig.nonce,
