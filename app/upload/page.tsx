@@ -46,17 +46,25 @@ export default function UploadPage() {
     }
   };
 
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const addLog = (msg: string) => {
+    console.log(`[DEBUG] ${msg}`);
+    setDebugLogs(prev => [msg, ...prev].slice(0, 5));
+  };
+
   // 2. DETECTAR WALLET + VERIFICAR WORLD ID (TODO EN UNO)
   const handleDetectAndVerify = async () => {
     setError('');
+    addLog('Iniciando handleDetectAndVerify...');
     
     if (!MiniKit.isInstalled()) {
       setError('Por favor, abre esta app dentro de World App.');
+      addLog('Error: MiniKit no instalado');
       return;
     }
 
     try {
-      // A. Autenticar Wallet (Usando la forma directa que pide el error)
+      addLog('Solicitando walletAuth...');
       const authRes = await (MiniKit as any).walletAuth({
         nonce: Math.random().toString(36).substring(2),
         requestId: 'scigate_auth',
@@ -65,25 +73,41 @@ export default function UploadPage() {
 
       if (authRes.data?.address) {
         const address = authRes.data.address;
+        addLog(`Wallet OK: ${address.slice(0,6)}...`);
         setWalletAddress(address);
         setWalletConfirmed(true);
         setIsVerifying(true);
 
-        // B. Esperar un momento y lanzar World ID automáticamente
-        console.log('Wallet detected, launching World ID...');
+        addLog('Esperando 2s para World ID...');
         setTimeout(async () => {
           try {
             const mini = (MiniKit as any);
-            // BUSCADOR TODOTERRENO: Intentamos todas las rutas posibles
-            const verifyFn = mini.verify || 
-                             (mini.commands && mini.commands.verify) || 
-                             (mini.commandsAsync && mini.commandsAsync.verify);
             
-            if (typeof verifyFn !== 'function') {
-              throw new Error('No se encontró la función verify en ninguna ruta de MiniKit (direct, commands, o commandsAsync)');
+            // INTROSPECCIÓN: Ver qué hay realmente en MiniKit
+            const keys = Object.keys(mini).filter(k => typeof mini[k] === 'function' || typeof mini[k] === 'object');
+            addLog(`Keys en MiniKit: ${keys.join(', ')}`);
+
+            let verifyFn = mini['verify'];
+            if (verifyFn) addLog('Encontrado: MiniKit.verify');
+            
+            if (!verifyFn && mini['commands']) {
+              addLog('Buscando en commands...');
+              verifyFn = mini['commands']['verify'];
+              if (verifyFn) addLog('Encontrado: commands.verify');
             }
 
-            console.log('Usando función de verificación encontrada...');
+            if (!verifyFn && mini['commandsAsync']) {
+              addLog('Buscando en commandsAsync...');
+              verifyFn = mini['commandsAsync']['verify'];
+              if (verifyFn) addLog('Encontrado: commandsAsync.verify');
+            }
+            
+            if (typeof verifyFn !== 'function') {
+              addLog('ERROR: No se halló función verify');
+              throw new Error('Función verify no encontrada. Revisa los logs en pantalla.');
+            }
+
+            addLog('Lanzando modal de World ID...');
             const verifyRes = await verifyFn({
               action: WORLD_ACTION_ID,
               signal: address.toLowerCase(),
@@ -91,22 +115,24 @@ export default function UploadPage() {
             });
 
             if (verifyRes.finalPayload.status === 'success') {
+              addLog('Verificación EXITOSA');
               await handleVerifySuccess(verifyRes.finalPayload, address);
             } else {
-              setError('Verificación cancelada. Intenta de nuevo.');
+              addLog(`Cancelado: ${verifyRes.finalPayload.status}`);
+              setError('Verificación cancelada.');
               setWalletConfirmed(false);
               setIsVerifying(false);
             }
           } catch (vErr: any) {
-            console.error('Verify Error:', vErr);
-            setError('Error de World ID: ' + (vErr.message || 'Fallo en la llamada nativa'));
+            addLog(`Error V: ${vErr.message}`);
+            setError('Error de World ID: ' + (vErr.message || 'Fallo nativo'));
             setWalletConfirmed(false);
             setIsVerifying(false);
           }
-        }, 1200);
+        }, 2000);
       }
     } catch (err: any) {
-      console.error('Auth Error:', err);
+      addLog(`Error A: ${err.message}`);
       setError('Fallo al conectar wallet: ' + (err.message || 'Cerraste la app?'));
     }
   };
@@ -183,6 +209,13 @@ export default function UploadPage() {
           {error && (
             <div style={{ padding: 16, background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: 12, color: '#f87171', marginBottom: 24 }}>
               ⚠️ {error}
+            </div>
+          )}
+
+          {debugLogs.length > 0 && (
+            <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 12, marginBottom: 24, fontSize: 10, fontFamily: 'monospace', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontWeight: 'bold' }}>SYSTEM LOGS:</div>
+              {debugLogs.map((log, i) => <div key={i} style={{ color: i === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>&gt; {log}</div>)}
             </div>
           )}
 
