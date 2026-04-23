@@ -37,6 +37,7 @@ import {
   DEBUG_LOG_TOKEN,
   WORLD_ID_SIGNING_KEY,
   WORLD_ID_RP_ID,
+  WORLD_APP_ID,
 } from './config.js';
 
 import {
@@ -371,12 +372,15 @@ app.route('/authors', authors);
 // ── World ID RP signing ──────────────────────────────────────
 app.post('/api/world-id/rp-context', async (c) => {
   try {
-    const { action, signal } = await c.req.json();
-    if (!WORLD_ID_SIGNING_KEY || !WORLD_ID_RP_ID) {
-      return c.json({ error: 'RP configuration missing' }, 500);
+    const { action, signal, app_id } = await c.req.json();
+    const targetAppId = app_id || WORLD_APP_ID;
+
+    if (!WORLD_ID_SIGNING_KEY || !WORLD_ID_RP_ID || !targetAppId) {
+      return c.json({ error: 'RP configuration incomplete' }, 500);
     }
     const sigData = signRequest({
       signingKeyHex: WORLD_ID_SIGNING_KEY,
+      app_id: targetAppId,
       action: action,
       signal: signal,
     } as any);
