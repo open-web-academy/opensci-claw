@@ -107,13 +107,6 @@ export default function UploadPage() {
       const idkitPayload = {
         app_id: WORLD_APP_ID,
         action: WORLD_ACTION_ID,
-        rp_context: {
-          rp_id: safeRpId,
-          nonce: rpSig.nonce,
-          created_at: rpSig.created_at,
-          expires_at: rpSig.expires_at,
-          signature: rpSig.signature,
-        },
         allow_legacy_proofs: true,
         environment: 'production',
       };
