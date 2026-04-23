@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { parseUnits, encodeFunctionData } from 'viem';
 import { MiniKit } from '@worldcoin/minikit-js';
-import { IDKit, CredentialRequest } from '@worldcoin/idkit-core';
+import { IDKit, CredentialRequest, any } from '@worldcoin/idkit-core';
 import { PAPER_REGISTRY_ABI } from '@/config/abi';
 
 const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
@@ -107,7 +107,6 @@ export default function UploadPage() {
       const idkitPayload = {
         app_id: WORLD_APP_ID,
         action: WORLD_ACTION_ID,
-        signal: address.toLowerCase(),
         rp_context: {
           rp_id: safeRpId,
           nonce: rpSig.nonce,
@@ -122,7 +121,10 @@ export default function UploadPage() {
       addLog(`Payload IDKit: ${JSON.stringify(idkitPayload, null, 2)}`);
       
       const request = await IDKit.request(idkitPayload as any).constraints(
-        CredentialRequest('face', { signal: address.toLowerCase() })
+        any(
+          CredentialRequest('face', { signal: address.toLowerCase() }),
+          CredentialRequest('proof_of_human', { signal: address.toLowerCase() })
+        )
       );
       
       addLog('Esperando verificación del usuario...');
