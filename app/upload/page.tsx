@@ -83,13 +83,6 @@ export default function UploadPage() {
     setError('');
     console.log('Attempting wallet detection...');
     
-    // 1. First check if it's already in the global state
-    if ((MiniKit as any).walletAddress) {
-      setWalletAddress((MiniKit as any).walletAddress);
-      setWalletConfirmed(true);
-      return;
-    }
-
     if (!MiniKit.isInstalled()) {
       setMiniKitNotInstalled(true);
       setError('MiniKit is not detected. If you are in a desktop browser, please enter your wallet address manually below.');
@@ -97,16 +90,35 @@ export default function UploadPage() {
     }
 
     try {
-      // 2. Request Wallet Auth (this will trigger a prompt in the World App)
+      // 1. Detectar Wallet
       const res = await (MiniKit as any).walletAuth({
         nonce: Math.random().toString(36).substring(2),
         requestId: 'scigate_auth',
-        expirationTime: new Date(Date.now() + 1000 * 60 * 60), // 1 hour
+        expirationTime: new Date(Date.now() + 1000 * 60 * 60),
       });
 
       if (res.data?.address) {
-        setWalletAddress(res.data.address);
+        const detectedAddress = res.data.address;
+        setWalletAddress(detectedAddress);
         setWalletConfirmed(true);
+
+        // 2. ¡FLUJO DIRECTO! Lanzar verificación de World ID inmediatamente
+        console.log('Wallet detected, triggering World ID verification automatically...');
+        try {
+          const verifyRes = await (MiniKit as any).verify({
+            action: WORLD_ACTION_ID,
+            signal: detectedAddress.toLowerCase(),
+            verification_level: 'device',
+          });
+
+          if (verifyRes.finalPayload.status === 'success') {
+            console.log('Automatic Verification Success:', verifyRes.finalPayload);
+            // Reutilizamos la función que ya maneja el éxito
+            handleVerifyWorldId(verifyRes.finalPayload);
+          }
+        } catch (vErr) {
+          console.error('Automatic verification failed, user can still click the button manually:', vErr);
+        }
       } else {
         throw new Error('Wallet detection failed or was cancelled.');
       }
