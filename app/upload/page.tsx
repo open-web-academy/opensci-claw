@@ -145,8 +145,9 @@ export default function UploadPage() {
       }
 
     } catch (err: any) {
-      addLog(`Error: ${err.message}`);
-      setError(err.message || 'Error inesperado');
+      const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+      addLog(`Error: ${errMsg}`);
+      setError(errMsg || 'Error inesperado');
       setWalletConfirmed(false);
       setIsVerifying(false);
     }
