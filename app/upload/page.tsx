@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { parseUnits, encodeFunctionData } from 'viem';
 import { MiniKit } from '@worldcoin/minikit-js';
-import { IDKit, deviceLegacy } from '@worldcoin/idkit-core';
+import { IDKit, CredentialRequest } from '@worldcoin/idkit-core';
 import { PAPER_REGISTRY_ABI } from '@/config/abi';
 
 const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
@@ -114,13 +114,15 @@ export default function UploadPage() {
           expires_at: rpSig.expires_at,
           signature: rpSig.signature,
         },
-        allow_legacy_proofs: true,
+        allow_legacy_proofs: false,
         environment: 'production',
       };
       
       addLog(`Payload IDKit: ${JSON.stringify(idkitPayload, null, 2)}`);
       
-      const request = await IDKit.request(idkitPayload as any).preset(deviceLegacy({ signal: address.toLowerCase() }));
+      const request = await IDKit.request(idkitPayload as any).constraints(
+        CredentialRequest('face', { signal: address.toLowerCase() })
+      );
       
       addLog('Esperando verificación del usuario...');
       const completion = await request.pollUntilCompletion({ timeout: 120000 });
