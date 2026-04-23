@@ -34,7 +34,7 @@ def _safe_text(response: Any) -> str:
 async def answer_question(
     question: str,
     chunks: list[dict[str, Any]],
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-1.5-flash-latest",
     allow_agent_buy: bool = True,
 ) -> str:
     """
