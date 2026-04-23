@@ -386,6 +386,7 @@ app.post('/api/world-id/rp-context', async (c) => {
       app_id: targetAppId,
       action: action,
       signal: signal,
+      verification_level: 'device',
     } as any);
 
     return c.json({
