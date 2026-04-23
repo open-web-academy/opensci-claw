@@ -95,26 +95,36 @@ export default function UploadPage() {
             const mini = (MiniKit as any);
             let verifyFn = null;
 
-            // 1. Probar en el objeto activo
+            // 1. Probar en el objeto activo (Lo más probable en v2)
             if (typeof mini['getActiveMiniKit'] === 'function') {
-              const active = mini['getActiveMiniKit']();
-              addLog(`Inspeccionando ActiveMiniKit...`);
-              if (active && typeof active['verify'] === 'function') {
-                verifyFn = active['verify'].bind(active);
-                addLog('¡HALLADO! verify() en ActiveMiniKit');
+              try {
+                const active = mini['getActiveMiniKit']();
+                addLog(`Inspeccionando Active...`);
+                if (active && typeof active['verify'] === 'function') {
+                  verifyFn = active['verify'].bind(active);
+                  addLog('¡HALLADO! verify() en Active');
+                }
+              } catch(e) {
+                addLog('Error al llamar getActiveMiniKit');
               }
             }
 
-            // 2. Fallbacks si no se halló en Active
+            // 2. Probar acceso directo si no se halló en active
             if (!verifyFn) {
-              verifyFn = mini['verify'] || (mini['commands'] && mini['commands']['verify']);
+              if (typeof mini['verify'] === 'function') {
+                verifyFn = mini['verify'];
+                addLog('Detectado: MiniKit.verify');
+              } else if (typeof mini['verifyPayload'] === 'function') {
+                verifyFn = mini['verifyPayload'];
+                addLog('Detectado: MiniKit.verifyPayload');
+              }
             }
 
             if (typeof verifyFn !== 'function') {
-              addLog('ERROR: Sigue sin aparecer verify(). Enviando lista completa a Render...');
-              const allKeys = Object.getOwnPropertyNames(mini);
-              addLog(`Lista completa: ${allKeys.join(', ')}`);
-              throw new Error('Función de verificación no encontrada.');
+              addLog('ERROR: verify() no hallado. Enviando reporte seguro...');
+              const safeKeys = Object.getOwnPropertyNames(mini).filter(k => k !== 'commands' && k !== 'commandsAsync');
+              addLog(`Disponibles: ${safeKeys.join(', ')}`);
+              throw new Error('Función de verificación no encontrada en esta versión.');
             }
 
             addLog('Lanzando World ID...');

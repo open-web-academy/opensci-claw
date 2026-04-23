@@ -165,6 +165,17 @@ app.use(
   })
 );
 
+// Debug Logs for Hackathon
+app.post('/api/debug/logs', async (c) => {
+  try {
+    const { msg, device } = await c.req.json();
+    console.log(`[MOBILE_DEBUG][${device || 'unknown'}] ${msg}`);
+    return c.json({ ok: true });
+  } catch (e) {
+    return c.json({ ok: false }, 400);
+  }
+});
+
 // Request id + structured log line
 app.use('*', async (c, next) => {
   const id = crypto.randomUUID().slice(0, 8);
