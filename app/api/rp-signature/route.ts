@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force Node.js runtime (signRequest requires it, NOT Edge)
 export const runtime = 'nodejs';
 
+// Acceso dinámico: webpack de Next.js NO puede reemplazar process.env['X'] en build
+function getSigningKey(): string {
+  const env = process.env;
+  const rawKey = env['RP_SIGNING_KEY'] || env['WORLD_ID_SIGNING_KEY'] || '';
+  if (!rawKey || rawKey === '0x') return '';
+  return rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
+}
+
 export async function POST(req: NextRequest) {
   let body: any;
   try {
@@ -17,16 +25,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'action is required' }, { status: 400 });
   }
 
-  // Leer en runtime, NO al nivel del módulo (Next.js reemplaza process.env en build)
-  const rawKey = process.env.RP_SIGNING_KEY || process.env.WORLD_ID_SIGNING_KEY || '';
-  const signingKey = rawKey && rawKey !== '0x'
-    ? (rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`)
-    : '';
+  const signingKey = getSigningKey();
 
   if (!signingKey) {
-    console.error('[rp-signature] No signing key. RP_SIGNING_KEY:', typeof process.env.RP_SIGNING_KEY, 'WORLD_ID_SIGNING_KEY:', typeof process.env.WORLD_ID_SIGNING_KEY);
+    // Diagnóstico: mostrar qué env vars existen con prefijo WORLD_ o RP_
+    const envKeys = Object.keys(process.env).filter(k => 
+      k.startsWith('WORLD') || k.startsWith('RP_') || k.startsWith('SIGNING')
+    );
+    console.error('[rp-signature] No signing key. Available env keys:', envKeys);
     return NextResponse.json(
-      { error: `RP_SIGNING_KEY not configured. RAW_KEY length: ${rawKey.length}` },
+      { error: `RP_SIGNING_KEY not configured. Available keys: ${envKeys.join(', ') || 'NONE'}` },
       { status: 500 }
     );
   }
@@ -46,7 +54,7 @@ export async function POST(req: NextRequest) {
       expires_at: expiresAt,
     });
   } catch (err: any) {
-    console.error('[rp-signature] Failed to sign:', err.message, err.stack);
+    console.error('[rp-signature] Failed to sign:', err.message);
     return NextResponse.json(
       { error: `Failed to generate RP signature: ${err.message}` },
       { status: 500 }
