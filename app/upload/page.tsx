@@ -99,11 +99,16 @@ export default function UploadPage() {
 
       // ── PASO 3: Lanzar verificación World ID vía IDKit ──
       addLog('Paso 3: Lanzando World ID (IDKit)...');
+      
+      const safeRpId = rpSig.rp_id && rpSig.rp_id.startsWith('rp_') 
+        ? rpSig.rp_id 
+        : RP_ID;
+        
       const request = await IDKit.request({
         app_id: WORLD_APP_ID,
         action: WORLD_ACTION_ID,
         rp_context: {
-          rp_id: rpSig.rp_id || RP_ID,
+          rp_id: safeRpId,
           nonce: rpSig.nonce,
           created_at: rpSig.created_at,
           expires_at: rpSig.expires_at,
