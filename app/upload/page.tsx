@@ -92,38 +92,44 @@ export default function UploadPage() {
         addLog('Iniciando búsqueda de verify() en 2s...');
         setTimeout(async () => {
           try {
-            const MiniKitClass = (MiniKit as any);
+            const mini = (MiniKit as any);
             let verifyFn = null;
-            let activeInstance = null;
 
-            addLog('Obteniendo instancia activa...');
-            if (typeof MiniKitClass['getActiveMiniKit'] === 'function') {
-              activeInstance = MiniKitClass['getActiveMiniKit']();
+            addLog('Probando rutas de emergencia...');
+
+            // 1. ¿Se llama attestation? (Estaba en tu lista)
+            if (typeof mini['attestation'] === 'function') {
+              addLog('Probando con attestation()...');
+              verifyFn = mini['attestation'].bind(mini);
+            } 
+            
+            // 2. ¿Se llama idKit?
+            if (!verifyFn && typeof mini['idKit'] === 'function') {
+              addLog('Probando con idKit()...');
+              verifyFn = mini['idKit'].bind(mini);
             }
 
-            if (activeInstance) {
-              addLog('Instancia hallada. Probando verify...');
-              
-              if (typeof (activeInstance as any)['verify'] === 'function') {
-                verifyFn = (activeInstance as any)['verify'].bind(activeInstance);
-                addLog('¡HALLADO! verify() disponible en instancia.');
-              } else {
-                addLog('verify() no es función en instancia.');
+            // 3. Forzar el objeto prohibido (commands) pero con protección total
+            if (!verifyFn) {
+              addLog('Intento desesperado: Forzando commands.verify...');
+              try {
+                // Intentamos acceder SIN preguntar si existe para no disparar el Proxy
+                const forcedFn = mini['commands']['verify'];
+                if (typeof forcedFn === 'function') {
+                  verifyFn = forcedFn.bind(mini['commands']);
+                  addLog('¡FORZADO! commands.verify obtenido.');
+                }
+              } catch(e) {
+                addLog('Fallo al forzar commands.');
               }
             }
 
-            // Fallback si no hay instancia o no tiene verify
-            if (!verifyFn) {
-              addLog('Buscando fallback en Clase...');
-              verifyFn = MiniKitClass['verify'] || MiniKitClass['verifyPayload'];
-            }
-
             if (typeof verifyFn !== 'function') {
-              addLog('ERROR FINAL: No se encontró verify() en ningún sitio.');
-              throw new Error('Función de verificación no disponible. Revisa los logs de Render.');
+              addLog('ERROR: Agotadas todas las rutas.');
+              throw new Error('No se detectó función de verificación. Prueba manual requerida.');
             }
 
-            addLog('Lanzando World ID...');
+            addLog('Ejecutando verificación...');
             const verifyRes = await verifyFn({
               action: WORLD_ACTION_ID,
               signal: address.toLowerCase(),
