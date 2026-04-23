@@ -77,12 +77,16 @@ export default function UploadPage() {
       setWalletConfirmed(true);
       setIsVerifying(true);
 
-      // ── PASO 2: Obtener firma RP del backend ──
+      // ── PASO 2: Obtener firma RP del backend (Hono server) ──
       addLog('Paso 2: Obteniendo firma RP...');
-      const rpSigRes = await fetch('/api/rp-signature', {
+      const rpSigRes = await fetch(`${API_URL}/api/world-id/rp-context`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: WORLD_ACTION_ID }),
+        body: JSON.stringify({ 
+          action: WORLD_ACTION_ID,
+          signal: address.toLowerCase(),
+          app_id: WORLD_APP_ID,
+        }),
       });
 
       if (!rpSigRes.ok) {
@@ -99,11 +103,11 @@ export default function UploadPage() {
         app_id: WORLD_APP_ID,
         action: WORLD_ACTION_ID,
         rp_context: {
-          rp_id: RP_ID,
+          rp_id: rpSig.rp_id || RP_ID,
           nonce: rpSig.nonce,
           created_at: rpSig.created_at,
           expires_at: rpSig.expires_at,
-          signature: rpSig.sig,
+          signature: rpSig.signature,
         },
         allow_legacy_proofs: true,
         environment: 'production',
