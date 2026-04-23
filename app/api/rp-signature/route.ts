@@ -3,12 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force Node.js runtime (signRequest requires it, NOT Edge)
 export const runtime = 'nodejs';
 
-const RAW_KEY = process.env.RP_SIGNING_KEY ?? process.env.WORLD_ID_SIGNING_KEY ?? '';
-// Normalizar: siempre con prefijo 0x (funciona si el usuario lo puso con o sin 0x)
-const RP_SIGNING_KEY = RAW_KEY && RAW_KEY !== '0x' 
-  ? (RAW_KEY.startsWith('0x') ? RAW_KEY : `0x${RAW_KEY}`)
-  : '';
-
 export async function POST(req: NextRequest) {
   let body: any;
   try {
@@ -23,20 +17,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'action is required' }, { status: 400 });
   }
 
-  if (!RP_SIGNING_KEY) {
-    console.error('[rp-signature] No signing key found. Checked: RP_SIGNING_KEY, WORLD_ID_SIGNING_KEY');
+  // Leer en runtime, NO al nivel del módulo (Next.js reemplaza process.env en build)
+  const rawKey = process.env.RP_SIGNING_KEY || process.env.WORLD_ID_SIGNING_KEY || '';
+  const signingKey = rawKey && rawKey !== '0x'
+    ? (rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`)
+    : '';
+
+  if (!signingKey) {
+    console.error('[rp-signature] No signing key. RP_SIGNING_KEY:', typeof process.env.RP_SIGNING_KEY, 'WORLD_ID_SIGNING_KEY:', typeof process.env.WORLD_ID_SIGNING_KEY);
     return NextResponse.json(
-      { error: `RP_SIGNING_KEY not configured. RAW_KEY length: ${RAW_KEY.length}` },
+      { error: `RP_SIGNING_KEY not configured. RAW_KEY length: ${rawKey.length}` },
       { status: 500 }
     );
   }
 
   try {
-    // Dynamic import to avoid Edge runtime issues
     const { signRequest } = await import('@worldcoin/idkit-core/signing');
-    
+
     const { sig, nonce, createdAt, expiresAt } = signRequest({
-      signingKeyHex: RP_SIGNING_KEY,
+      signingKeyHex: signingKey,
       action,
     });
 
