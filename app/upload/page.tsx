@@ -12,6 +12,7 @@ const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? 'http://localhost:8000';
 const WORLD_ACTION_ID = process.env.NEXT_PUBLIC_WORLD_ACTION_ID ?? process.env.WORLD_ACTION_ID ?? 'verify-author';
 const PAPER_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_PAPER_REGISTRY_ADDRESS ?? process.env.PAPER_REGISTRY_ADDRESS ?? '';
 const WORLD_APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID ?? process.env.WORLD_APP_ID ?? 'app_aacdf4487837b144901774135e3b0803') as `app_${string}`;
+const RP_ID = process.env.NEXT_PUBLIC_WORLD_RP_ID ?? process.env.NEXT_PUBLIC_RP_ID ?? process.env.WORLD_ID_RP_ID ?? process.env.RP_ID ?? 'rp_e2b239675f4bd84b';
 
 type Step = 'verify' | 'upload' | 'success';
 
@@ -87,75 +88,49 @@ export default function UploadPage() {
       
       let idkitResult: any = null;
 
-      if (MiniKit.isInstalled()) {
-        // --- MODO TELÉFONO SEGURO ---
-        addLog('Esperando a MiniKit isReady...');
-        
-        // Esperar hasta 2 segundos a que esté listo
-        for (let i = 0; i < 20; i++) {
-          if ((MiniKit as any).isReady) break;
-          await new Promise(r => setTimeout(r, 100));
-        }
+      // ── PASO 2: Obtener firma RP del backend (Necesario para el Simulador/IDKit) ──
+      addLog('Preparando seguridad World ID...');
+      const rpSigRes = await fetch(`${API_URL}/api/world-id/rp-context`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: WORLD_ACTION_ID,
+          signal: 'scigate-auth-v1', // Signal fijo para máxima estabilidad
+          app_id: WORLD_APP_ID
+        }),
+      });
 
-        addLog('MiniKit listo: ' + (MiniKit as any).isReady);
+      if (!rpSigRes.ok) throw new Error('Error de comunicación con el servidor World ID');
+      const rpSig = await rpSigRes.json();
 
-        // Buscar el comando verify en todos lados
-        const verifyFn = (MiniKit as any).verify || 
-                         (MiniKit as any).commands?.verify || 
-                         Object.getPrototypeOf(MiniKit)?.verify;
+      // ── PASO 3: Lanzar verificación IDKit ──
+      addLog('Lanzando Verificación...');
+      
+      const idkitPayload = {
+        app_id: WORLD_APP_ID, 
+        action: WORLD_ACTION_ID, 
+        rp_context: {
+          rp_id: RP_ID,
+          nonce: rpSig.nonce,
+          created_at: rpSig.created_at,
+          expires_at: rpSig.expires_at,
+          signature: rpSig.signature,
+        },
+        allow_legacy_proofs: true,
+        environment: 'staging', 
+      };
 
-        if (typeof verifyFn === 'function') {
-          addLog('Usando comando detectado...');
-          const verifyRes = await verifyFn.call(MiniKit, {
-            action: WORLD_ACTION_ID,
-            signal: address.toLowerCase(),
-          });
-
-          if (!verifyRes.finalPayload.success) {
-            throw new Error('Error en MiniKit: ' + JSON.stringify(verifyRes.finalPayload));
-          }
-          idkitResult = verifyRes.finalPayload;
-          addLog('Verificación MiniKit OK ✓');
-        } else {
-          addLog('No se detectó verify() nativo, usando fallback IDKit...');
-          // Si no hay verify nativo, usamos IDKit que es lo que Worldcoin recomienda ahora
-          const idkitPayload = {
-            app_id: WORLD_APP_ID, 
-            action: WORLD_ACTION_ID, 
-            allow_legacy_proofs: true,
-            environment: 'staging', 
-          };
-          const request = await IDKit.request(idkitPayload as any).preset(deviceLegacy({ signal: address.toLowerCase() }));
-          const completion = await request.pollUntilCompletion({ timeout: 120000 });
-          if (!completion.success) throw new Error(`IDKit falló: ${completion.error}`);
-          idkitResult = completion.result;
-          addLog('Verificación IDKit (Fallback) OK ✓');
-        }
-      } else {
-        // --- MODO NAVEGADOR (IDKit / Simulador) ---
-        addLog('Modo Navegador detectado.');
-        addLog('ADVERTENCIA: El simulador en PC requiere RP_ID por seguridad.');
-        
-        const idkitPayload = {
-          app_id: WORLD_APP_ID, 
-          action: WORLD_ACTION_ID, 
-          allow_legacy_proofs: true,
-          environment: 'staging', 
-        };
-
-        const request = await IDKit.request(idkitPayload as any).preset(deviceLegacy({ signal: address.toLowerCase() }));
-        
-        const connectorUri = (request as any).uri || (request as any).connectorUri;
-        if (connectorUri) {
-          addLog('URI PARA SIMULADOR: ' + connectorUri);
-        }
-
-        const completion = await request.pollUntilCompletion({ timeout: 120000 });
-        if (!completion.success) throw new Error(`IDKit falló: ${completion.error}`);
-        
-        idkitResult = completion.result;
-        addLog('Verificación IDKit OK ✓');
+      const request = await IDKit.request(idkitPayload as any).preset(deviceLegacy({ signal: 'scigate-auth-v1' }));
+      
+      const connectorUri = (request as any).uri || (request as any).connectorUri;
+      if (connectorUri) {
+        addLog('PARA EL SIMULADOR: ' + connectorUri);
       }
+
+      const completion = await request.pollUntilCompletion({ timeout: 120000 });
+      if (!completion.success) throw new Error(`Verificación fallida: ${completion.error}`);
+      
+      idkitResult = completion.result;
 
       if (!idkitResult) throw new Error('No se obtuvo resultado de verificación');
 
