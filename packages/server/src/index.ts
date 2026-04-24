@@ -392,60 +392,18 @@ app.post('/api/world-id/rp-context', async (c) => {
       return c.json({ error: 'RP configuration incomplete' }, 500);
     }
 
-    // ── MANUAL V4 SIGNING (No Ethereum Prefix) ──
-    const hashToField = (data: Uint8Array) => {
-      const hash = keccak256(data);
-      return (BigInt(hash) >> 8n).toString(16).padStart(64, '0');
-    };
-
-    const rawNonce = crypto.getRandomValues(new Uint8Array(32));
-    const nonceField = hashToField(rawNonce);
-    const nonce = `0x${nonceField}`;
-    
-    const createdAt = Math.floor(Date.now() / 1000);
-    const expiresAt = createdAt + 300; // 5 minutes
-
-    // 1. Build the message buffer
-    const versionByte = new Uint8Array([1]);
-    const nonceBytes = hexToBytes(nonce as `0x${string}`);
-    const createdAtBytes = new Uint8Array(8);
-    new DataView(createdAtBytes.buffer).setBigUint64(0, BigInt(createdAt), false);
-    const expiresAtBytes = new Uint8Array(8);
-    new DataView(expiresAtBytes.buffer).setBigUint64(0, BigInt(expiresAt), false);
-    
-    // Only include action if it's not empty
-    let message: Uint8Array;
-    if (action && action.length > 0) {
-      const actionField = hashToField(toBytes(action));
-      const actionBytes = hexToBytes(`0x${actionField}`);
-      message = concatBytes([
-        versionByte,
-        nonceBytes,
-        createdAtBytes,
-        expiresAtBytes,
-        actionBytes
-      ]);
-    } else {
-      // Standard 49-byte message for generic requests
-      message = concatBytes([
-        versionByte,
-        nonceBytes,
-        createdAtBytes,
-        expiresAtBytes
-      ]);
-    }
-
-    // 2. Sign the raw hash (WITHOUT Ethereum prefix)
-    const hash = keccak256(message);
-    const account = privateKeyToAccount(WORLD_ID_SIGNING_KEY as `0x${string}`);
-    const signatureHex = await account.sign({ hash });
+    const sigData = signRequest({
+      signingKeyHex: WORLD_ID_SIGNING_KEY,
+      app_id: targetAppId,
+      action: action,
+    } as any);
 
     return c.json({
       rp_id: WORLD_ID_RP_ID,
-      nonce: nonce,
-      signature: signatureHex,
-      created_at: createdAt,
-      expires_at: expiresAt,
+      nonce: sigData.nonce,
+      signature: sigData.sig,
+      created_at: sigData.createdAt,
+      expires_at: sigData.expiresAt,
     });
   } catch (err: any) {
     console.error('[WorldID] sign failed:', err);

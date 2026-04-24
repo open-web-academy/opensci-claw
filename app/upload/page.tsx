@@ -85,7 +85,7 @@ export default function UploadPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: FULL_ACTION_ID,
+          action: WORLD_ACTION_ID,
           signal: address.toLowerCase(),
           app_id: WORLD_APP_ID
         }),
@@ -105,7 +105,7 @@ export default function UploadPage() {
       
       const idkitPayload = {
         app_id: WORLD_APP_ID, 
-        action: FULL_ACTION_ID, 
+        action: WORLD_ACTION_ID, 
         rp_context: {
           rp_id: safeRpId,
           nonce: rpSig.nonce,
@@ -113,16 +113,11 @@ export default function UploadPage() {
           expires_at: rpSig.expires_at,
           signature: rpSig.signature,
         },
-        allow_legacy_proofs: false,
+        allow_legacy_proofs: true,
         environment: 'production',
       };
       
-      const request = await IDKit.request(idkitPayload as any).constraints(
-        any(
-          CredentialRequest('face', { signal: address.toLowerCase() }),
-          CredentialRequest('proof_of_human', { signal: address.toLowerCase() })
-        )
-      );
+      const request = await IDKit.request(idkitPayload as any).preset(deviceLegacy({ signal: address.toLowerCase() }));
       
       addLog('Esperando verificación del usuario...');
       const completion = await request.pollUntilCompletion({ timeout: 120000 });
