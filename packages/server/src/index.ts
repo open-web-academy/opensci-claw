@@ -11,6 +11,8 @@ import {
   x402HTTPResourceServer,
   x402ResourceServer,
 } from '@x402/hono';
+import { keccak256, hexToBytes, bytesToHex, toBytes, concatBytes } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import {
   agentkitResourceServerExtension,
   createAgentBookVerifier,
@@ -383,27 +385,52 @@ app.route('/authors', authors);
 // ── World ID RP signing ──────────────────────────────────────
 app.post('/api/world-id/rp-context', async (c) => {
   try {
-    const { action, signal, app_id } = await c.req.json();
+    const { action, app_id } = await c.req.json();
     const targetAppId = app_id || WORLD_APP_ID;
 
     if (!WORLD_ID_SIGNING_KEY || !WORLD_ID_RP_ID || !targetAppId) {
       return c.json({ error: 'RP configuration incomplete' }, 500);
     }
 
-    console.log('🔐 Signing World ID Request:', { targetAppId, action, signal, rp_id: WORLD_ID_RP_ID });
+    // ── MANUAL V4 SIGNING (No Ethereum Prefix) ──
+    const nonce = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+    const createdAt = Math.floor(Date.now() / 1000);
+    const expiresAt = createdAt + 300; // 5 minutes
 
-    const sigData = signRequest({
-      signingKeyHex: WORLD_ID_SIGNING_KEY,
-      // We omit action and signal to generate a generic app-level signature
-      // which is more compatible with production World App v4 policies
-    } as any);
+    // 1. Build the message buffer
+    // Version (1) + Nonce (32) + CreatedAt (8) + ExpiresAt (8) + Action (32)
+    const versionByte = new Uint8Array([1]);
+    const nonceBytes = hexToBytes(nonce as `0x${string}`);
+    const createdAtBytes = new Uint8Array(8);
+    new DataView(createdAtBytes.buffer).setBigUint64(0, BigInt(createdAt), false);
+    const expiresAtBytes = new Uint8Array(8);
+    new DataView(expiresAtBytes.buffer).setBigUint64(0, BigInt(expiresAt), false);
+    
+    // Hash the action to a field element (keccak256 >> 8)
+    // Note: World ID v4 uses keccak256(action) >> 8 as a field element
+    const actionHash = keccak256(toBytes(action));
+    const actionField = hexToBytes(actionHash);
+    
+    const message = concatBytes([
+      versionByte,
+      nonceBytes,
+      createdAtBytes,
+      expiresAtBytes,
+      actionField
+    ]);
+
+    // 2. Sign the raw hash (WITHOUT Ethereum prefix)
+    const hash = keccak256(message);
+    const account = privateKeyToAccount(WORLD_ID_SIGNING_KEY as `0x${string}`);
+    // sign() without prefix
+    const signature = await account.sign({ hash });
 
     return c.json({
       rp_id: WORLD_ID_RP_ID,
-      nonce: sigData.nonce,
-      signature: sigData.sig,
-      created_at: sigData.createdAt,
-      expires_at: sigData.expiresAt,
+      nonce: nonce,
+      signature: signature,
+      created_at: createdAt,
+      expires_at: expiresAt,
     });
   } catch (err: any) {
     console.error('[WorldID] sign failed:', err);

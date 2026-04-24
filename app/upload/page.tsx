@@ -77,21 +77,20 @@ export default function UploadPage() {
       setWalletConfirmed(true);
       setIsVerifying(true);
 
-      // ── PASO 2: Obtener firma RP del backend (Hono server) ──
+      // ── PASO 2: Obtener firma RP del backend ──
       addLog('Paso 2: Obteniendo firma RP...');
       const rpSigRes = await fetch(`${API_URL}/api/world-id/rp-context`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           action: WORLD_ACTION_ID,
           signal: address.toLowerCase(),
-          app_id: WORLD_APP_ID,
+          app_id: WORLD_APP_ID
         }),
       });
 
       if (!rpSigRes.ok) {
-        const rpErr = await rpSigRes.json().catch(() => ({}));
-        throw new Error(`Firma RP falló: ${rpErr.error || rpSigRes.status}`);
+        throw new Error('No se pudo obtener la firma RP del backend');
       }
 
       const rpSig = await rpSigRes.json();
@@ -100,15 +99,11 @@ export default function UploadPage() {
       // ── PASO 3: Lanzar verificación World ID vía IDKit ──
       addLog('Paso 3: Lanzando World ID (IDKit)...');
       
-      const safeRpId = rpSig.rp_id && rpSig.rp_id.startsWith('rp_') 
-        ? rpSig.rp_id 
-        : RP_ID;
-        
       const idkitPayload = {
         app_id: WORLD_APP_ID,
         action: WORLD_ACTION_ID,
         rp_context: {
-          rp_id: safeRpId,
+          rp_id: rpSig.rp_id,
           nonce: rpSig.nonce,
           created_at: rpSig.created_at,
           expires_at: rpSig.expires_at,
@@ -117,8 +112,6 @@ export default function UploadPage() {
         allow_legacy_proofs: false,
         environment: 'production',
       };
-      
-      addLog(`Payload IDKit: ${JSON.stringify(idkitPayload, null, 2)}`);
       
       const request = await IDKit.request(idkitPayload as any).constraints(
         any(
@@ -138,8 +131,8 @@ export default function UploadPage() {
       addLog('World ID verificado ✓');
       const idkitResult = completion.result;
 
-      // ── PASO 4: Verificar proof en backend ──
-      addLog('Paso 4: Verificando proof en backend...');
+      // ── PASO 4: Registrar en Smart Contract ──
+      addLog('Paso 4: Registrando en blockchain...');
       const verifyRes = await fetch('/api/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
