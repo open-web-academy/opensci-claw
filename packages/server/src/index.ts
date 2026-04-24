@@ -413,16 +413,27 @@ app.post('/api/world-id/rp-context', async (c) => {
     const expiresAtBytes = new Uint8Array(8);
     new DataView(expiresAtBytes.buffer).setBigUint64(0, BigInt(expiresAt), false);
     
-    const actionField = hashToField(toBytes(action));
-    const actionBytes = hexToBytes(`0x${actionField}`);
-    
-    const message = concatBytes([
-      versionByte,
-      nonceBytes,
-      createdAtBytes,
-      expiresAtBytes,
-      actionBytes
-    ]);
+    // Only include action if it's not empty
+    let message: Uint8Array;
+    if (action && action.length > 0) {
+      const actionField = hashToField(toBytes(action));
+      const actionBytes = hexToBytes(`0x${actionField}`);
+      message = concatBytes([
+        versionByte,
+        nonceBytes,
+        createdAtBytes,
+        expiresAtBytes,
+        actionBytes
+      ]);
+    } else {
+      // Standard 49-byte message for generic requests
+      message = concatBytes([
+        versionByte,
+        nonceBytes,
+        createdAtBytes,
+        expiresAtBytes
+      ]);
+    }
 
     // 2. Sign the raw hash (WITHOUT Ethereum prefix)
     const hash = keccak256(message);

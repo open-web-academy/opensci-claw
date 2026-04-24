@@ -101,7 +101,7 @@ export default function UploadPage() {
       
       const idkitPayload = {
         app_id: WORLD_APP_ID,
-        action: WORLD_ACTION_ID,
+        action: "", // Omit action for diagnostic test
         rp_context: {
           rp_id: rpSig.rp_id,
           nonce: rpSig.nonce,
