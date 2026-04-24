@@ -88,20 +88,49 @@ export default function UploadPage() {
       let idkitResult: any = null;
 
       if (MiniKit.isInstalled()) {
-        // --- MODO TELÉFONO (MiniKit Nativo) ---
-        // Este modo NO debería pedirte rp_id porque estás dentro de la App
-        addLog('Usando MiniKit Nativo (Sin RP ID)...');
-        const verifyRes = await (MiniKit as any).verify({
-          action: WORLD_ACTION_ID,
-          signal: address.toLowerCase(),
-        });
-
-        if (!verifyRes.finalPayload.success) {
-          throw new Error('Error en MiniKit: ' + JSON.stringify(verifyRes.finalPayload));
+        // --- MODO TELÉFONO SEGURO ---
+        addLog('Esperando a MiniKit isReady...');
+        
+        // Esperar hasta 2 segundos a que esté listo
+        for (let i = 0; i < 20; i++) {
+          if ((MiniKit as any).isReady) break;
+          await new Promise(r => setTimeout(r, 100));
         }
-        idkitResult = verifyRes.finalPayload;
-        addLog('Verificación MiniKit OK ✓');
 
+        addLog('MiniKit listo: ' + (MiniKit as any).isReady);
+
+        // Buscar el comando verify en todos lados
+        const verifyFn = (MiniKit as any).verify || 
+                         (MiniKit as any).commands?.verify || 
+                         Object.getPrototypeOf(MiniKit)?.verify;
+
+        if (typeof verifyFn === 'function') {
+          addLog('Usando comando detectado...');
+          const verifyRes = await verifyFn.call(MiniKit, {
+            action: WORLD_ACTION_ID,
+            signal: address.toLowerCase(),
+          });
+
+          if (!verifyRes.finalPayload.success) {
+            throw new Error('Error en MiniKit: ' + JSON.stringify(verifyRes.finalPayload));
+          }
+          idkitResult = verifyRes.finalPayload;
+          addLog('Verificación MiniKit OK ✓');
+        } else {
+          addLog('No se detectó verify() nativo, usando fallback IDKit...');
+          // Si no hay verify nativo, usamos IDKit que es lo que Worldcoin recomienda ahora
+          const idkitPayload = {
+            app_id: WORLD_APP_ID, 
+            action: WORLD_ACTION_ID, 
+            allow_legacy_proofs: true,
+            environment: 'staging', 
+          };
+          const request = await IDKit.request(idkitPayload as any).preset(deviceLegacy({ signal: address.toLowerCase() }));
+          const completion = await request.pollUntilCompletion({ timeout: 120000 });
+          if (!completion.success) throw new Error(`IDKit falló: ${completion.error}`);
+          idkitResult = completion.result;
+          addLog('Verificación IDKit (Fallback) OK ✓');
+        }
       } else {
         // --- MODO NAVEGADOR (IDKit / Simulador) ---
         addLog('Modo Navegador detectado.');
