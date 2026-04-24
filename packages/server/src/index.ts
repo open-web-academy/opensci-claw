@@ -427,7 +427,7 @@ app.post('/api/world-id/rp-context', async (c) => {
 
     return c.json({
       rp_id: WORLD_ID_RP_ID,
-      nonce: nonce,
+      nonce: nonce.replace('0x', ''),
       signature: signatureHex,
       created_at: createdAt,
       expires_at: expiresAt,
