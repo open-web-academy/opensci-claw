@@ -125,6 +125,17 @@ export default function UploadPage() {
       
       const request = await IDKit.request(idkitPayload as any).preset(deviceLegacy({ signal: address.toLowerCase() }));
       
+      // EXTRAER URI PARA EL SIMULADOR
+      const connectorUri = (request as any).uri || (request as any).connectorUri;
+      if (connectorUri) {
+        addLog('------------------------------------');
+        addLog('COPIA ESTO AL SIMULADOR:');
+        addLog(connectorUri);
+        addLog('------------------------------------');
+      } else {
+        addLog('No se pudo obtener el código QR automáticamente.');
+      }
+      
       addLog('Esperando verificación del usuario...');
       const completion = await request.pollUntilCompletion({ timeout: 120000 });
 
