@@ -11,8 +11,8 @@ const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
 const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? 'http://localhost:8000';
 const WORLD_ACTION_ID = process.env.NEXT_PUBLIC_WORLD_ACTION_ID ?? process.env.WORLD_ACTION_ID ?? 'verify-author';
 const PAPER_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_PAPER_REGISTRY_ADDRESS ?? process.env.PAPER_REGISTRY_ADDRESS ?? '';
-const WORLD_APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID ?? process.env.WORLD_APP_ID ?? 'app_aacdf4487837b144901774135e3b0803') as `app_${string}`;
-const RP_ID = process.env.NEXT_PUBLIC_WORLD_RP_ID ?? process.env.NEXT_PUBLIC_RP_ID ?? process.env.WORLD_ID_RP_ID ?? process.env.RP_ID ?? 'rp_e2b239675f4bd84b';
+const WORLD_APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID ?? process.env.WORLD_APP_ID ?? 'app_8d3e4ef96e0ef911d19e2e42107b16fb') as `app_${string}`;
+const RP_ID = process.env.NEXT_PUBLIC_WORLD_RP_ID ?? process.env.NEXT_PUBLIC_RP_ID ?? process.env.WORLD_ID_RP_ID ?? process.env.RP_ID ?? 'rp_9ca69f8de419f87b';
 
 type Step = 'verify' | 'upload' | 'success';
 

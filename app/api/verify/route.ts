@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const WORLD_APP_ID = process.env.WORLD_APP_ID ?? process.env.NEXT_PUBLIC_WORLD_APP_ID ?? '';
+const WORLD_APP_ID = process.env.WORLD_APP_ID ?? process.env.NEXT_PUBLIC_WORLD_APP_ID ?? 'app_8d3e4ef96e0ef911d19e2e42107b16fb';
+const RP_ID = process.env.NEXT_PUBLIC_WORLD_RP_ID ?? process.env.RP_ID ?? process.env.WORLD_ID_RP_ID ?? process.env.NEXT_PUBLIC_RP_ID ?? 'rp_9ca69f8de419f87b';
 const DEMO_MODE =
   process.env.DEMO_MODE === 'true' || process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   // ── Legacy v3 format: proof has nullifier_hash, merkle_root, proof, verification_level ──
   const isIDKitResult = proof.protocol_version && proof.responses;
 
-  if (!WORLD_APP_ID) {
+  if (!RP_ID && !WORLD_APP_ID) {
     if (DEMO_MODE) {
       return NextResponse.json({
         success: true,
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
       // ── New IDKit v4 verification flow ──
       // Send the full IDKit result to the v4 verify endpoint
       const verifyRes = await fetch(
-        `https://developer.world.org/api/v4/verify/${WORLD_APP_ID}`,
+        `https://developer.world.org/api/v4/verify/${RP_ID}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
