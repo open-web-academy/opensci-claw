@@ -104,7 +104,7 @@ export default function UploadPage() {
       const safeRpId = rpSig.rp_id || RP_ID;
       
       const idkitPayload = {
-        app_id: safeRpId, // Use RP_ID as app_id for legacy bridge compatibility
+        app_id: WORLD_APP_ID, 
         action: FULL_ACTION_ID, 
         rp_context: {
           rp_id: safeRpId,
