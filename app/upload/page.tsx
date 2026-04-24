@@ -88,15 +88,26 @@ export default function UploadPage() {
       let idkitResult: any = null;
 
       if (MiniKit.isInstalled()) {
-        // --- MODO TELÉFONO (MiniKit) ---
+        // --- MODO DIAGNÓSTICO ---
+        const keys = Object.keys(MiniKit);
+        addLog('Comandos detectados: ' + keys.join(', '));
+
         addLog('Usando MiniKit Nativo...');
-        const verifyRes = await (MiniKit as any).verify({
+        
+        // Intentamos detectar el comando correcto
+        const verifyFn = (MiniKit as any).verify || (MiniKit as any).commands?.verify;
+        
+        if (typeof verifyFn !== 'function') {
+          throw new Error('No se encontró el comando verify en MiniKit. Keys: ' + keys.join(', '));
+        }
+
+        const verifyRes = await verifyFn({
           action: WORLD_ACTION_ID,
           signal: address.toLowerCase(),
         });
 
         if (!verifyRes.finalPayload.success) {
-          throw new Error('Error en MiniKit verify');
+          throw new Error('Error en MiniKit verify: ' + JSON.stringify(verifyRes.finalPayload));
         }
         idkitResult = verifyRes.finalPayload;
         addLog('Verificación MiniKit OK ✓');
