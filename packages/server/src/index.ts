@@ -409,7 +409,7 @@ app.post('/api/world-id/rp-context', async (c) => {
     // Hash the action to a field element (keccak256 >> 8)
     // Note: World ID v4 uses keccak256(action) >> 8 as a field element
     const actionHash = keccak256(toBytes(action));
-    const actionField = hexToBytes(actionHash);
+    const actionField = hexToBytes((BigInt(actionHash) >> 8n).toString(16).padStart(64, '0') as `0x${string}`);
     
     const message = concatBytes([
       versionByte,
@@ -422,13 +422,13 @@ app.post('/api/world-id/rp-context', async (c) => {
     // 2. Sign the raw hash (WITHOUT Ethereum prefix)
     const hash = keccak256(message);
     const account = privateKeyToAccount(WORLD_ID_SIGNING_KEY as `0x${string}`);
-    // sign() without prefix
-    const signature = await account.sign({ hash });
+    // sign() without prefix, return only the hex string
+    const signatureHex = (await account.sign({ hash }));
 
     return c.json({
       rp_id: WORLD_ID_RP_ID,
       nonce: nonce,
-      signature: signature,
+      signature: signatureHex,
       created_at: createdAt,
       expires_at: expiresAt,
     });
