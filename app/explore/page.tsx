@@ -9,7 +9,7 @@ import AgentControl from '@/components/AgentControl';
 const USDC_CONTRACT = "0x79A02482A880bCe3F13E09da970dC34dB4cD24D1";
 const USDC_ABI = parseAbi(['function transfer(address to, uint256 value) public returns (bool)']);
 
-const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'https://scigate.onrender.com';
 const RECIPIENT = process.env.NEXT_PUBLIC_PAY_TO_ADDRESS ?? '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
 
 interface PaperResult {
@@ -51,7 +51,7 @@ export default function ExplorePage() {
   // REMOTE LOGGING HELPER: Sends info to server console for mobile debugging
   async function remoteLog(type: string, data: any) {
     try {
-      await fetch(`${API_URL}/debug/log`, {
+      await fetch(`${API_URL}/api/debug/logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, data, timestamp: new Date().toISOString() })
@@ -68,7 +68,7 @@ export default function ExplorePage() {
     setError('');
     setShowBypassButton(false);
     try {
-      const res = await fetch(`/api/papers/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`${API_URL}/papers/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setResults(data.results ?? []);
@@ -91,7 +91,7 @@ export default function ExplorePage() {
     setShowBypassButton(false);
 
     try {
-      const res = await fetch(`/api/papers/${encodeURIComponent(paperId)}/query`, {
+      const res = await fetch(`${API_URL}/papers/${encodeURIComponent(paperId)}/query`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
