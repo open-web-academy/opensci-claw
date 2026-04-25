@@ -64,15 +64,23 @@ export default function UploadPage() {
       addLog('Uploading to RAG service...');
       const formData = new FormData();
       formData.append('file', file);
-      const ragRes = await fetch('/api/rag/upload', { method: 'POST', body: formData });
-      const ragData = await ragRes.json();
       
-      if (!ragData || !ragData.hash) {
-        throw new Error('Failed to get content hash from RAG service.');
+      let contentHash = '';
+      try {
+        const ragRes = await fetch(`${RENDER_URL}/api/rag/upload`, { method: 'POST', body: formData });
+        const ragData = await ragRes.json();
+        contentHash = ragData.hash;
+      } catch (e) {
+        addLog('RAG Service failed, using fallback hash');
       }
 
-      const contentHash = ragData.hash;
-      addLog(`Content hash received: ${contentHash.substring(0, 10)}...`);
+      // Fallback hash if RAG fails (Mock for Demo)
+      if (!contentHash) {
+        contentHash = "0x" + [...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+        addLog('Using Demo Fallback Hash ✓');
+      } else {
+        addLog(`Content hash received: ${contentHash.substring(0, 10)}...`);
+      }
       const paperIdStr = Math.floor(Math.random() * 1000000).toString();
 
       addLog('Preparing v2 transaction...');
@@ -85,7 +93,7 @@ export default function UploadPage() {
       const callData = encodeFunctionData({
         abi: PAPER_REGISTRY_ABI,
         functionName: 'registerPaper',
-        args: [contentHash, `ipfs://demo/${paperIdStr}`, priceQueryUnits, priceFullUnits, trainingPrice],
+        args: [contentHash as `0x${string}`, `ipfs://demo/${paperIdStr}`, priceQueryUnits, priceFullUnits, trainingPrice],
       });
 
       const handleTxResponse = async (payload: any) => {
