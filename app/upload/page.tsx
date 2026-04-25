@@ -66,20 +66,33 @@ export default function UploadPage() {
           addLog('Pidiendo walletAuth...');
           try {
             address = await new Promise((resolve, reject) => {
-              const unsubscribe = (MiniKit as any).subscribe('wallet_auth', (payload: any) => {
-                unsubscribe();
+              const handleResponse = (payload: any) => {
+                addLog(`Evento recibido: ${payload.status || 'sin status'}`);
+                unsubscribe1();
+                unsubscribe2();
                 if (payload.status === 'error') reject(new Error(payload.error_code));
                 else resolve(payload.address || '');
-              });
+              };
+
+              addLog('Suscribiendo a eventos de wallet...');
+              const unsubscribe1 = (MiniKit as any).subscribe('wallet_auth', handleResponse);
+              const unsubscribe2 = (MiniKit as any).subscribe('walletAuth', handleResponse);
+
+              addLog('Ejecutando MiniKit.commands.walletAuth...');
               (MiniKit as any).commands.walletAuth({
                 nonce: Math.random().toString(36).substring(2),
                 requestId: 'scigate_auth',
                 expirationTime: new Date(Date.now() + 1000 * 60 * 60),
               });
-              setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 60000);
+
+              setTimeout(() => { 
+                unsubscribe1(); 
+                unsubscribe2(); 
+                reject(new Error('timeout_wallet')); 
+              }, 30000);
             }) as string;
           } catch(e) {
-            addLog('walletAuth falló, usando fallback...');
+            addLog('walletAuth falló o dio timeout, usando fallback...');
           }
         }
       } 
@@ -96,16 +109,27 @@ export default function UploadPage() {
       // ── PASO 2: Verificación World ID ──
       addLog('Lanzando verificación World ID...');
       const idkitResult = await new Promise((resolve, reject) => {
-        const unsubscribe = (MiniKit as any).subscribe('verify', (payload: any) => {
-          unsubscribe();
+        const handleVerify = (payload: any) => {
+          addLog(`Verificación recibida: ${payload.status}`);
+          unsub1();
+          unsub2();
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
-        });
+        };
+
+        const unsub1 = (MiniKit as any).subscribe('verify', handleVerify);
+        const unsub2 = (MiniKit as any).subscribe('verify_response', handleVerify);
+
         MiniKit.commands.verify({
           action: WORLD_ACTION_ID,
           signal: address.toLowerCase(),
         });
-        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 120000);
+
+        setTimeout(() => { 
+          unsub1(); 
+          unsub2(); 
+          reject(new Error('timeout_verify')); 
+        }, 120000);
       });
 
       addLog('Verificación World ID OK ✓');
