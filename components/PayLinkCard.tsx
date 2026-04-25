@@ -114,7 +114,7 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
       addLog('Invoking MiniKit...', 'info');
 
       const txResponse: any = await new Promise((resolve, reject) => {
-        const unsubscribe = MiniKit.subscribe('send_transaction', (payload: any) => {
+        const unsubscribe = (MiniKit as any).subscribe('send_transaction', (payload: any) => {
           unsubscribe();
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);

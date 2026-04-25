@@ -93,7 +93,7 @@ export default function DashboardPage() {
         return;
       }
       const res: any = await new Promise((resolve, reject) => {
-        const unsubscribe = MiniKit.subscribe('wallet_auth', (payload: any) => {
+        const unsubscribe = (MiniKit as any).subscribe('wallet_auth', (payload: any) => {
           unsubscribe();
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);

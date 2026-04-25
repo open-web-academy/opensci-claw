@@ -158,7 +158,7 @@ export default function ExplorePage() {
       });
 
       const response: any = await new Promise((resolve, reject) => {
-        const unsubscribe = MiniKit.subscribe('pay', (payload: any) => {
+        const unsubscribe = (MiniKit as any).subscribe('pay', (payload: any) => {
           unsubscribe();
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);

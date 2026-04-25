@@ -66,7 +66,7 @@ export default function UploadPage() {
           addLog('Pidiendo walletAuth...');
           try {
             address = await new Promise((resolve, reject) => {
-              const unsubscribe = MiniKit.subscribe('wallet_auth', (payload: any) => {
+              const unsubscribe = (MiniKit as any).subscribe('wallet_auth', (payload: any) => {
                 unsubscribe();
                 if (payload.status === 'error') reject(new Error(payload.error_code));
                 else resolve(payload.address || '');
@@ -96,7 +96,7 @@ export default function UploadPage() {
       // ── PASO 2: Verificación World ID ──
       addLog('Lanzando verificación World ID...');
       const idkitResult = await new Promise((resolve, reject) => {
-        const unsubscribe = MiniKit.subscribe('verify', (payload: any) => {
+        const unsubscribe = (MiniKit as any).subscribe('verify', (payload: any) => {
           unsubscribe();
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
@@ -157,7 +157,7 @@ export default function UploadPage() {
 
 
       const response: any = await new Promise((resolve, reject) => {
-        const unsubscribe = MiniKit.subscribe('send_transaction', (payload: any) => {
+        const unsubscribe = (MiniKit as any).subscribe('send_transaction', (payload: any) => {
           unsubscribe();
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
