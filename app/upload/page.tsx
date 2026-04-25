@@ -41,9 +41,6 @@ export default function UploadPage() {
     addLog('--- INICIANDO VERIFICACIÓN v2 ---');
     
     try {
-      // Introspección para ver qué inyectó el Provider
-      const methods = Object.getOwnPropertyNames(MiniKit).filter(k => typeof (MiniKit as any)[k] === 'function');
-      addLog('Métodos MiniKit: ' + methods.join(', '));
 
       let address = MiniKit.user?.walletAddress || '';
       if (!address) {
