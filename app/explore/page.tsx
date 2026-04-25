@@ -244,14 +244,14 @@ export default function ExplorePage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ color: 'var(--text-muted)' }}>Red</span>
-                <span>World Chain</span>
+                <span>World Chain Sepolia</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ color: 'var(--text-muted)' }}>ID App</span>
-                <span style={{ fontSize: 10, opacity: 0.6 }}>app_aac...</span>
+                <span style={{ fontSize: 10, opacity: 0.6 }}>app_8d3...</span>
               </div>
               <div style={{ fontSize: 9, color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: 8, marginTop: 8 }}>
-                Modo: <span style={{ color: 'var(--accent-emerald)' }}>Producción (Force)</span>
+                Modo: <span style={{ color: 'var(--accent-emerald)' }}>Staging (Testnet)</span>
               </div>
             </div>
 
