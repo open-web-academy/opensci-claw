@@ -57,18 +57,24 @@ export default function UploadPage() {
     // }
 
     try {
-      // ── PASO 1: Obtener wallet vía walletAuth ──
+      // ── PASO 1: Obtener wallet ──
       let address = '';
       if (MiniKit.isInstalled()) {
-        const authRes = await (MiniKit as any).commands.walletAuth({
-          nonce: Math.random().toString(36).substring(2),
-          requestId: 'scigate_auth',
-          expirationTime: new Date(Date.now() + 1000 * 60 * 60),
-        });
-        address = authRes.data?.address;
+        // Primero intentamos leerla directamente (v1 la expone aquí a veces)
+        address = (MiniKit as any).user?.walletAddress || '';
+        
+        if (!address) {
+          addLog('Pidiendo walletAuth...');
+          const authRes = await (MiniKit as any).commands.walletAuth({
+            nonce: Math.random().toString(36).substring(2),
+            requestId: 'scigate_auth',
+            expirationTime: new Date(Date.now() + 1000 * 60 * 60),
+          });
+          address = authRes.data?.address || '';
+        }
       } else {
         addLog('MiniKit no detectado, usando wallet de prueba...');
-        address = '0x1234567890123456789012345678901234567890'; // Dirección de prueba
+        address = '0x1234567890123456789012345678901234567890';
       }
 
       if (!address) {
