@@ -30,7 +30,8 @@ export default function UploadPage() {
   const addLog = (msg: string, data?: any) => {
     setDebugLogs(prev => [msg, ...prev].slice(0, 5));
     console.log(`[MOBILE_DEBUG] ${msg}`, data || '');
-    // Logs a Render
+    
+    // Logs a Vercel (míralos en el dashboard de Vercel)
     fetch('/api/debug', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -40,12 +41,16 @@ export default function UploadPage() {
 
   const handleDetectAndVerify = async () => {
     setError('');
-    addLog('--- INICIANDO FLUJO v2 (Direct) ---');
+    addLog('--- INICIANDO FLUJO v2 (Introspección) ---');
     
     try {
+      // 1. Ver qué funciones tiene MiniKit realmente
+      const methods = Object.keys(MiniKit).filter(k => typeof (MiniKit as any)[k] === 'function');
+      addLog('Funciones MiniKit: ' + methods.join(', '));
+
       let address = MiniKit.user?.walletAddress || '';
       if (!address) {
-        addLog('No se detectó wallet en MiniKit.user, usando respaldo.');
+        addLog('Usando wallet respaldo.');
         address = '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
       }
 
@@ -54,17 +59,28 @@ export default function UploadPage() {
 
       addLog('Lanzando World ID modal...');
       
-      // CAMBIO: Bypass de tipos para llamada directa
-      (MiniKit as any).verify({
+      const verifyArgs = {
         action: WORLD_ACTION_ID,
         signal: address.toLowerCase(),
-      });
+      };
 
-      addLog('Esperando respuesta del modal...');
+      // Intentar diferentes nombres de función según lo que diga la introspección
+      if (typeof (MiniKit as any).verify === 'function') {
+        addLog('Invocando .verify()...');
+        (MiniKit as any).verify(verifyArgs);
+      } else if (typeof (MiniKit as any).verifyAction === 'function') {
+        addLog('Invocando .verifyAction()...');
+        (MiniKit as any).verifyAction(verifyArgs);
+      } else {
+        addLog('ERROR: No se encontró función de verificación en: ' + methods.join(', '));
+        throw new Error('Método de verificación no encontrado en el SDK');
+      }
+
+      addLog('Esperando respuesta...');
       
       const handleVerifyResponse = async (payload: any) => {
         (MiniKit as any).unsubscribe('verify', handleVerifyResponse);
-        addLog('Respuesta modal recibida', payload);
+        addLog('Respuesta recibida', payload);
 
         if (payload.status === 'error') {
           addLog(`Error en modal: ${payload.error_code}`);
