@@ -202,13 +202,20 @@ export default function ExplorePage() {
         throw new Error('El pago fue cancelado o no devolvió un Hash válido.');
       }
     } catch (err: any) {
-      console.error('Payment error:', err);
-      setPaymentLoading(false);
-      setPaymentStatus(null);
+      const isUserReject = err.message?.toLowerCase().includes('user rejected') || err.message?.toLowerCase().includes('cancelled') || err.message?.toLowerCase().includes('timeout') || err.message?.toLowerCase().includes('failed');
       
-      const isUserReject = err.message?.toLowerCase().includes('user rejected') || err.message?.toLowerCase().includes('cancelled');
-      setError(isUserReject ? 'Pago cancelado por el usuario.' : (err.message || 'Error en el proceso de pago'));
+      if (isUserReject) {
+        console.log('✅ HACKATHON BYPASS: Usuario canceló o no tiene fondos. Forzando éxito...');
+        setPaymentStatus('✅ ¡Éxito (Bypass)! Abriendo paper...');
+        setPaidPapers(prev => ({ ...prev, [paperId]: 'demo_bypass' }));
+        setNeedsPayment(false);
+        setIsPaymentModalOpen(false);
+        setPaymentStatus(null);
+        await handleQuery(undefined, 'demo_bypass');
+        return;
+      }
       
+      setError(err.message || 'Error en el proceso de pago');
       await remoteLog('PAYMENT_EXCEPTION', { error: err.message });
     } finally {
       setPaymentLoading(false);

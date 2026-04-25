@@ -16,7 +16,7 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <MiniKitProvider props={{ appId: 'app_8d3e4ef96e0ef911d19e2e42107b16fb' }}>
+        <MiniKitProvider props={{ appId: 'app_8d3e4ef96e0ef911d19e2e42107b16fb', environment: 'production' } as any}>
           {children}
         </MiniKitProvider>
       </QueryClientProvider>

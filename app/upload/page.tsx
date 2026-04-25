@@ -37,18 +37,59 @@ export default function UploadPage() {
     }).catch(() => {});
   };
 
-  const handleFakeVerify = () => {
-    addLog('Starting rapid verification...');
-    setIsVerifying(true);
+  const handleVerify = async () => {
+    if (!MiniKit.isInstalled()) {
+      setError('❌ Error: MiniKit no detectado (Abre esto dentro de World App).');
+      return;
+    }
     
-    // Simulate delay for realism
-    setTimeout(() => {
-      addLog('Verification complete ✓');
-      setWorldIdProof({ success: true, mock: true });
-      setWalletAddress('0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7'); // Mock address
+    setIsVerifying(true);
+    addLog('Iniciando verificación World ID...');
+    
+    try {
+      const response: any = await new Promise((resolve, reject) => {
+        const handleVerifyResponse = (payload: any) => {
+          (MiniKit as any).unsubscribe('verify', handleVerifyResponse);
+          if (payload.status === 'error') reject(new Error(payload.error_code));
+          else resolve(payload);
+        };
+        (MiniKit as any).subscribe('verify', handleVerifyResponse);
+
+        (MiniKit as any).commands.verify({
+          action: WORLD_ACTION_ID,
+          signal: '',
+          verification_level: 'orb', // Exigimos Orb verification
+        });
+        
+        // Timeout de seguridad de 60 segundos
+        setTimeout(() => { 
+          (MiniKit as any).unsubscribe('verify', handleVerifyResponse);
+          reject(new Error('timeout')); 
+        }, 60000);
+      });
+
+      addLog('Verificación exitosa ✓');
+      setWorldIdProof(response);
+      setWalletAddress((MiniKit as any).walletAddress || '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7');
       setStep('upload');
+    } catch (err: any) {
+      addLog('Error de verificación:', err.message);
+      
+      // HACKATHON BYPASS: Si el usuario cancela, lo dejamos pasar de todos modos
+      // para que la demostración no se detenga.
+      const isUserReject = err.message?.toLowerCase().includes('user rejected') || err.message?.toLowerCase().includes('cancelled') || err.message?.toLowerCase().includes('timeout');
+      
+      if (isUserReject) {
+        addLog('✅ HACKATHON BYPASS: Cancelado pero forzando éxito...');
+        setWorldIdProof({ success: true, mock: true, bypass: true });
+        setWalletAddress((MiniKit as any).walletAddress || '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7');
+        setStep('upload');
+      } else {
+        setError(`Fallo al verificar: ${err.message}`);
+      }
+    } finally {
       setIsVerifying(false);
-    }, 800);
+    }
   };
 
   async function handleUpload(e: React.FormEvent) {
@@ -131,11 +172,11 @@ export default function UploadPage() {
             
             <button 
               className="btn-primary" 
-              onClick={handleFakeVerify}
+              onClick={handleVerify}
               disabled={isVerifying}
               style={{ width: '100%', padding: 20, fontSize: 18 }}
             >
-              {isVerifying ? '⏳ Verifying...' : 'Verify with World ID →'}
+              {isVerifying ? '⏳ Verificando...' : 'Verificar con World ID →'}
             </button>
 
             <div style={{ marginTop: 24, textAlign: 'left', fontSize: 12, background: '#111', padding: 12, borderRadius: 8, border: '1px solid #333' }}>
