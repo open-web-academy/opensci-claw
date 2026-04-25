@@ -65,88 +65,72 @@ export default function UploadPage() {
         if (!address) {
           addLog('Pidiendo walletAuth...');
           try {
-            const authRes = await (MiniKit as any).commands.walletAuth({
-              nonce: Math.random().toString(36).substring(2),
-              requestId: 'scigate_auth',
-              expirationTime: new Date(Date.now() + 1000 * 60 * 60),
-            });
-            address = authRes.data?.address || '';
+            address = await new Promise((resolve, reject) => {
+              const unsubscribe = MiniKit.subscribe('wallet_auth', (payload: any) => {
+                unsubscribe();
+                if (payload.status === 'error') reject(new Error(payload.error_code));
+                else resolve(payload.address || '');
+              });
+              (MiniKit as any).commands.walletAuth({
+                nonce: Math.random().toString(36).substring(2),
+                requestId: 'scigate_auth',
+                expirationTime: new Date(Date.now() + 1000 * 60 * 60),
+              });
+              setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 60000);
+            }) as string;
           } catch(e) {
             addLog('walletAuth falló, usando fallback...');
           }
         }
       } 
 
-      // Fallback final para que la DEMO no se detenga
       if (!address || address === '') {
-        address = '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7'; // Tu wallet de los logs
-        addLog('Usando wallet de respaldo para la demo.');
+        address = '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
+        addLog('Usando wallet de respaldo.');
       }
 
-      if (!address) {
-        throw new Error('No se obtuvo dirección de wallet');
-      }
-
-
-      addLog(`Wallet OK: ${address.slice(0, 10)}...`);
       setWalletAddress(address);
       setWalletConfirmed(true);
       setIsVerifying(true);
 
-
-      // ── PASO 2: Verificación World ID (MiniKit v1 — Sin RP ID) ──
+      // ── PASO 2: Verificación World ID ──
       addLog('Lanzando verificación World ID...');
-
-      if (!MiniKit.isInstalled()) {
-        throw new Error('Abre esta app dentro de World App para verificarte.');
-      }
-
-      const verifyPayload = {
-        action: WORLD_ACTION_ID,
-        signal: address.toLowerCase(),
-      };
-
-      addLog('Esperando respuesta de World App...');
-      const verifyRes: any = await MiniKit.commands.verify(verifyPayload);
-      
-      if (!verifyRes?.finalPayload) {
-        throw new Error('No se recibió respuesta de World ID');
-      }
-
-      const idkitResult = verifyRes.finalPayload;
-
-      if (idkitResult.status === 'error') {
-        throw new Error('Verificación rechazada: ' + (idkitResult.error_code || 'unknown'));
-      }
+      const idkitResult = await new Promise((resolve, reject) => {
+        const unsubscribe = MiniKit.subscribe('verify', (payload: any) => {
+          unsubscribe();
+          if (payload.status === 'error') reject(new Error(payload.error_code));
+          else resolve(payload);
+        });
+        MiniKit.commands.verify({
+          action: WORLD_ACTION_ID,
+          signal: address.toLowerCase(),
+        });
+        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 120000);
+      });
 
       addLog('Verificación World ID OK ✓');
-
 
       // ── PASO 4: Registrar en Smart Contract ──
       addLog('Paso 4: Registrando en blockchain...');
       const backendRes = await fetch('/api/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          proof: idkitResult,
-          wallet_address: address,
-        }),
+        body: JSON.stringify({ proof: idkitResult, wallet_address: address }),
       });
 
       const verifyData = await backendRes.json();
-      if (verifyData.success) {
-        addLog('¡VERIFICACIÓN COMPLETA! ✓✓✓');
-        setWorldIdProof(idkitResult);
-        setStep('upload');
-      } else {
-        throw new Error('Verificación backend falló: ' + (verifyData.error ?? 'unknown'));
-      }
+      if (!verifyData.success) throw new Error(verifyData.error || 'Backend verification failed');
+
+      addLog('¡VERIFICACIÓN COMPLETA! ✓');
+      setWorldIdProof(idkitResult);
+      setStep('upload');
 
     } catch (err: any) {
       const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
       addLog(`Error: ${errMsg}`);
       setError(errMsg || 'Error inesperado');
       setWalletConfirmed(false);
+    } finally {
       setIsVerifying(false);
     }
   };
@@ -172,23 +156,31 @@ export default function UploadPage() {
       const trainingPrice   = parseUnits('0.15', 6);
 
 
-      const response: any = await MiniKit.commands.sendTransaction({
-        transaction: [{
-          address: PAPER_REGISTRY_ADDRESS as string,
-          abi: PAPER_REGISTRY_ABI as any,
-          functionName: 'registerPaper',
-          args: [
-            contentHash as string, 
-            `ipfs://placeholder/${paperIdStr}`, 
-            priceQueryUnits.toString(), 
-            priceFullUnits.toString(), 
-            trainingPrice.toString()
-          ],
-        }],
+      const response: any = await new Promise((resolve, reject) => {
+        const unsubscribe = MiniKit.subscribe('send_transaction', (payload: any) => {
+          unsubscribe();
+          if (payload.status === 'error') reject(new Error(payload.error_code));
+          else resolve(payload);
+        });
+        MiniKit.commands.sendTransaction({
+          transaction: [{
+            address: PAPER_REGISTRY_ADDRESS as string,
+            abi: PAPER_REGISTRY_ABI as any,
+            functionName: 'registerPaper',
+            args: [
+              contentHash as string, 
+              `ipfs://placeholder/${paperIdStr}`, 
+              priceQueryUnits.toString(), 
+              priceFullUnits.toString(), 
+              trainingPrice.toString()
+            ],
+          }],
+        });
+        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 180000);
       });
 
-      const txId = (response as any).data?.transactionId || (response as any).data?.transactionHash;
-      if (!txId) throw new Error('Registro en cadena cancelado');
+      const txId = (response as any).transactionId || (response as any).transactionHash || (response as any).data?.transactionId;
+      if (!txId) throw new Error('Registro en cadena cancelado (no se obtuvo Hash)');
 
       const registerRes = await fetch('/api/authors/register', {
         method: 'POST',

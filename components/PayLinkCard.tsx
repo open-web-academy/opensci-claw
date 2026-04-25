@@ -113,16 +113,24 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
       setStatus('verifying');
       addLog('Invoking MiniKit...', 'info');
 
-      const txResponse: any = await (MiniKit as any).commands.sendTransaction({
-        transaction: [{
-          address: USDC_ADDRESS,
-          abi: USDC_ABI as any,
-          functionName: 'transfer',
-          args: [scheme.payTo, BigInt(scheme.amount).toString()],
-        }],
+      const txResponse: any = await new Promise((resolve, reject) => {
+        const unsubscribe = MiniKit.subscribe('send_transaction', (payload: any) => {
+          unsubscribe();
+          if (payload.status === 'error') reject(new Error(payload.error_code));
+          else resolve(payload);
+        });
+        (MiniKit as any).commands.sendTransaction({
+          transaction: [{
+            address: USDC_ADDRESS,
+            abi: USDC_ABI as any,
+            functionName: 'transfer',
+            args: [scheme.payTo, BigInt(scheme.amount).toString()],
+          }],
+        });
+        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 120000);
       });
 
-      const txId = (txResponse as any).data?.transactionId || (txResponse as any).data?.transactionHash;
+      const txId = (txResponse as any).transactionId || (txResponse as any).transactionHash || (txResponse as any).data?.transactionId;
       if (txId) {
         verifyPayment(txId);
       } else {

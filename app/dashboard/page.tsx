@@ -92,13 +92,21 @@ export default function DashboardPage() {
         setWalletAddress(MiniKit.user.walletAddress);
         return;
       }
-      const res = await (MiniKit as any).commands.walletAuth({
-        nonce: Date.now().toString(),
-        requestId: 'auth_detect_dash',
-        expirationTime: new Date(Date.now() + 60 * 60 * 1000),
+      const res: any = await new Promise((resolve, reject) => {
+        const unsubscribe = MiniKit.subscribe('wallet_auth', (payload: any) => {
+          unsubscribe();
+          if (payload.status === 'error') reject(new Error(payload.error_code));
+          else resolve(payload);
+        });
+        (MiniKit as any).commands.walletAuth({
+          nonce: Date.now().toString(),
+          requestId: 'auth_detect_dash',
+          expirationTime: new Date(Date.now() + 60 * 60 * 1000),
+        });
+        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 60000);
       });
-      if (res.data && res.data.address) {
-        setWalletAddress(res.data.address);
+      if (res.address) {
+        setWalletAddress(res.address);
       }
     } catch (err: any) {
       console.error(err);

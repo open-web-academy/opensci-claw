@@ -157,19 +157,27 @@ export default function ExplorePage() {
         type: 'sendTransaction'
       });
 
-      const response: any = await (MiniKit as any).commands.pay({
-        reference: paymentReference,
-        to: RECIPIENT,
-        tokens: [{ 
-          symbol: 'USDC' as any, 
-          token_amount: '0.01' 
-        }],
-        description: `Unlock Paper: ${selectedPaper.title || paperId}`,
+      const response: any = await new Promise((resolve, reject) => {
+        const unsubscribe = MiniKit.subscribe('pay', (payload: any) => {
+          unsubscribe();
+          if (payload.status === 'error') reject(new Error(payload.error_code));
+          else resolve(payload);
+        });
+        (MiniKit as any).commands.pay({
+          reference: paymentReference,
+          to: RECIPIENT,
+          tokens: [{ 
+            symbol: 'USDC' as any, 
+            token_amount: '0.01' 
+          }],
+          description: `Unlock Paper: ${selectedPaper.title || paperId}`,
+        });
+        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 120000);
       });
 
       setPaymentStatus('Validando pago...');
       
-      const transactionId = response.data.transactionId;
+      const transactionId = response.transactionId || response.transactionHash || response.data?.transactionId;
       await remoteLog('MINIKIT_PAY_RESPONSE', { transactionId });
 
       if (transactionId) {
