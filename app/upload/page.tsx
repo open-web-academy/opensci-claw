@@ -29,7 +29,7 @@ export default function UploadPage() {
   const addLog = (msg: string, data?: any) => {
     setDebugLogs(prev => [msg, ...prev].slice(0, 5));
     console.log(`[MOBILE_DEBUG] ${msg}`, data || '');
-    fetch('/api/debug', {
+    fetch(`${RENDER_URL}/api/debug`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg, data }),
@@ -41,6 +41,10 @@ export default function UploadPage() {
     addLog('--- INICIANDO VERIFICACIÓN v2 ---');
     
     try {
+      // Introspección para ver qué inyectó el Provider
+      const methods = Object.getOwnPropertyNames(MiniKit).filter(k => typeof (MiniKit as any)[k] === 'function');
+      addLog('Métodos MiniKit: ' + methods.join(', '));
+
       let address = MiniKit.user?.walletAddress || '';
       if (!address) {
         addLog('Pidiendo wallet de respaldo.');
@@ -91,7 +95,14 @@ export default function UploadPage() {
       (MiniKit as any).subscribe('verify', handleVerifyResponse);
 
       addLog('Lanzando World ID...');
-      (MiniKit as any).verify(verifyArgs);
+      // INTENTO SEGURO
+      if (typeof (MiniKit as any).verify === 'function') {
+        (MiniKit as any).verify(verifyArgs);
+      } else {
+        addLog('Error: .verify() no encontrado en MiniKit.');
+        setError('El SDK de Worldcoin no cargó el método de verificación.');
+        setIsVerifying(false);
+      }
 
     } catch (err: any) {
       addLog(`Error crítico: ${err.message}`);
