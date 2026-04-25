@@ -189,7 +189,9 @@ export default function ExplorePage() {
 
       if (transactionId) {
         setPaymentStatus('✅ ¡Éxito! Abriendo paper...');
-        console.log('✅ Payment Success! Hash:', transactionId);
+        console.log('✅ Payment Success on Sepolia! Hash:', transactionId);
+        
+        // Enviamos el Hash real de Sepolia al servidor para verificación criptográfica
         setPaidPapers(prev => ({ ...prev, [paperId]: transactionId }));
         setNeedsPayment(false);
         setIsPaymentModalOpen(false);
