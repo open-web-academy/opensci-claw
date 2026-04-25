@@ -114,11 +114,13 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
       addLog('Invoking MiniKit...', 'info');
 
       const txResponse: any = await new Promise((resolve, reject) => {
-        const unsubscribe = (MiniKit as any).subscribe('send_transaction', (payload: any) => {
-          unsubscribe();
+        const handleTxResponse = (payload: any) => {
+          (MiniKit as any).unsubscribe('send_transaction', handleTxResponse);
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
-        });
+        };
+        (MiniKit as any).subscribe('send_transaction', handleTxResponse);
+
         (MiniKit as any).commands.sendTransaction({
           transaction: [{
             address: USDC_ADDRESS,
@@ -127,7 +129,10 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
             args: [scheme.payTo, BigInt(scheme.amount).toString()],
           }],
         });
-        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 120000);
+        setTimeout(() => { 
+          (MiniKit as any).unsubscribe('send_transaction', handleTxResponse);
+          reject(new Error('timeout')); 
+        }, 120000);
       });
 
       const txId = (txResponse as any).transactionId || (txResponse as any).transactionHash || (txResponse as any).data?.transactionId;

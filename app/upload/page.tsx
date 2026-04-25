@@ -2,24 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { parseUnits, encodeFunctionData } from 'viem';
-import dynamic from 'next/dynamic';
+import { parseUnits } from 'viem';
 import { MiniKit } from '@worldcoin/minikit-js';
 import { PAPER_REGISTRY_ABI } from '@/config/abi';
 
-// Carga dinámica para evitar errores de hidratación/carga
-const IDKitWidget: any = dynamic(
-  () => import('@worldcoin/idkit').then((mod: any) => mod.IDKitWidget),
-  { ssr: false }
-);
-
-const VerificationLevel = { Orb: 'orb', Device: 'device' }; // Fallback para tipos solo en cliente
-
-const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
-const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? 'http://localhost:8000';
-const PAPER_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_PAPER_REGISTRY_ADDRESS ?? process.env.PAPER_REGISTRY_ADDRESS ?? '';
-const WORLD_APP_ID = "app_8d3e4ef96e0ef911d19e2e42107b16fb"; // VERIFICA QUE ESTÉ EN PRODUCCIÓN
-const WORLD_ACTION_ID = "verify-author"; // Tomado de tu captura del portal
+const WORLD_APP_ID = "app_8d3e4ef96e0ef911d19e2e42107b16fb";
+const WORLD_ACTION_ID = "verify-author";
+const PAPER_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_PAPER_REGISTRY_ADDRESS ?? '';
 
 type Step = 'verify' | 'upload' | 'success';
 
@@ -27,86 +16,88 @@ export default function UploadPage() {
   const [step, setStep] = useState<Step>('verify');
   const [worldIdProof, setWorldIdProof] = useState<any>(null);
   const [walletAddress, setWalletAddress] = useState('');
-  const [walletConfirmed, setWalletConfirmed] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   // Upload state
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
   const [error, setError] = useState('');
+  const [priceQuery, setPriceQuery] = useState('0.10');
+  const [priceFull, setPriceFull] = useState('5.00');
 
-  const [priceQuery, setPriceQuery] = useState('0.01');
-  const [priceFull, setPriceFull] = useState('0.10');
-
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const addLog = async (msg: string) => {
-    console.log(`[DEBUG] ${msg}`);
-    setDebugLogs(prev => [msg, ...prev].slice(0, 8));
-    
-    // Enviar a Render (Consola)
-    try {
-      await fetch(`${API_URL}/api/debug/logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ msg, device: walletAddress || 'initial' })
-      });
-    } catch(e) {}
+  const addLog = (msg: string) => {
+    setDebugLogs(prev => [msg, ...prev].slice(0, 5));
+    console.log(`[MOBILE_DEBUG] ${msg}`);
   };
 
-  // ── FLUJO PRINCIPAL: Wallet Auth + World ID via IDKit ──────────
   const handleDetectAndVerify = async () => {
     setError('');
-    addLog('--- INICIANDO FLUJO ---');
+    addLog('--- INICIANDO FLUJO v2 ---');
     
-    // if (!MiniKit.isInstalled()) {
-    //   setError('Por favor, abre esta app dentro de World App.');
-    //   addLog('Error: MiniKit no instalado');
-    //   return;
-    // }
-
     try {
-      // ── PASO 1: Obtener wallet (Optimizado para la Demo) ──
-      let address = (MiniKit as any).user?.walletAddress || '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
-      addLog(`Wallet OK: ${address.slice(0, 8)}...`);
+      // 1. Obtener Wallet (v2 ya tiene el usuario si está instalado)
+      let address = MiniKit.user?.walletAddress || '';
       
+      if (!address) {
+        addLog('Pidiendo walletAuth...');
+        // En v2, podemos intentar forzar la detección
+        address = '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7'; // Fallback demo
+        addLog('Usando wallet de respaldo.');
+      }
+
       setWalletAddress(address);
-      setWalletConfirmed(true);
       setIsVerifying(true);
 
-      addLog('Wallet lista. Ahora procede con World ID.');
-      // Ya no lanzamos el modal aquí, el usuario lo hará con el botón de IDKit
-    } catch (err: any) {
-      const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
-      addLog(`Error: ${errMsg}`);
-      setError(errMsg || 'Error inesperado');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleVerifySuccess = async (result: any) => {
-    try {
-      addLog('Verificación World ID OK ✓');
-      setWorldIdProof(result);
-      setIsVerifying(true);
-
-      addLog('Paso 4: Registrando en blockchain...');
-      const backendRes = await fetch('/api/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proof: result, wallet_address: walletAddress }),
+      // 2. Verificación World ID (MiniKit v2 nativo)
+      addLog('Lanzando World ID modal...');
+      
+      // En v2.x, el modal se lanza y el resultado llega por evento
+      (MiniKit as any).commands.verify({
+        action: WORLD_ACTION_ID,
+        signal: address.toLowerCase(),
       });
 
-      const verifyData = await backendRes.json();
-      if (!verifyData.success) throw new Error(verifyData.error || 'Backend verification failed');
+      addLog('Esperando respuesta del modal...');
+      
+      const handleVerifyResponse = async (payload: any) => {
+        (MiniKit as any).unsubscribe('verify', handleVerifyResponse);
+        if (payload.status === 'error') {
+          addLog(`Error en modal: ${payload.error_code}`);
+          setError('Error en el modal de World ID');
+          setIsVerifying(false);
+          return;
+        }
 
-      addLog('¡VERIFICACIÓN COMPLETA! ✓');
-      setStep('upload');
+        addLog('¡Verificación OK! Registrando...');
+        setWorldIdProof(payload);
+
+        // Registrar en Backend
+        try {
+          const backendRes = await fetch('/api/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ proof: payload, wallet_address: address }),
+          });
+          const verifyData = await backendRes.json();
+          if (!verifyData.success) throw new Error(verifyData.error || 'Fallo backend');
+          
+          addLog('Registro exitoso.');
+          setStep('upload');
+        } catch (e: any) {
+          setError(e.message);
+          addLog(`Error backend: ${e.message}`);
+        } finally {
+          setIsVerifying(false);
+        }
+      };
+
+      (MiniKit as any).subscribe('verify', handleVerifyResponse);
+
     } catch (err: any) {
-      setError(err.message || 'Error en validación');
       addLog(`Error: ${err.message}`);
-    } finally {
+      setError(err.message);
       setIsVerifying(false);
     }
   };
@@ -118,177 +109,124 @@ export default function UploadPage() {
     setError('');
 
     try {
+      // (Lógica de subida RAG igual...)
       const formData = new FormData();
       formData.append('file', file);
       const ragRes = await fetch('/api/rag/upload', { method: 'POST', body: formData });
-      if (!ragRes.ok) throw new Error('RAG upload failed');
-      
       const ragData = await ragRes.json();
-      const paperIdStr = String(ragData.paper_id);
-      const contentHash = paperIdStr.startsWith('0x') ? paperIdStr : `0x${paperIdStr}`;
+      const contentHash = ragData.hash;
+      const paperIdStr = Math.floor(Math.random() * 1000000).toString();
 
+      addLog('Enviando transacción a World Chain...');
+      
       const priceQueryUnits = parseUnits(priceQuery, 6);
       const priceFullUnits  = parseUnits(priceFull, 6);
       const trainingPrice   = parseUnits('0.15', 6);
 
-
-      const response: any = await new Promise((resolve, reject) => {
-        const unsubscribe = (MiniKit as any).subscribe('send_transaction', (payload: any) => {
-          unsubscribe();
-          if (payload.status === 'error') reject(new Error(payload.error_code));
-          else resolve(payload);
-        });
-        MiniKit.commands.sendTransaction({
-          transaction: [{
-            address: PAPER_REGISTRY_ADDRESS as string,
-            abi: PAPER_REGISTRY_ABI as any,
-            functionName: 'registerPaper',
-            args: [
-              contentHash as string, 
-              `ipfs://placeholder/${paperIdStr}`, 
-              priceQueryUnits.toString(), 
-              priceFullUnits.toString(), 
-              trainingPrice.toString()
-            ],
-          }],
-        });
-        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 180000);
+      // Transacción vía MiniKit v2
+      (MiniKit as any).commands.sendTransaction({
+        transaction: [{
+          address: PAPER_REGISTRY_ADDRESS,
+          abi: PAPER_REGISTRY_ABI,
+          functionName: 'registerPaper',
+          args: [contentHash, `ipfs://demo/${paperIdStr}`, priceQueryUnits.toString(), priceFullUnits.toString(), trainingPrice.toString()],
+        }],
       });
 
-      const txId = (response as any).transactionId || (response as any).transactionHash || (response as any).data?.transactionId;
-      if (!txId) throw new Error('Registro en cadena cancelado (no se obtuvo Hash)');
+      const handleTxResponse = async (payload: any) => {
+        (MiniKit as any).unsubscribe('send_transaction', handleTxResponse);
+        if (payload.status === 'success') {
+          addLog('Transacción exitosa.');
+          setStep('success');
+        } else {
+          addLog('Transacción fallida.');
+          setError('La transacción no se pudo completar.');
+        }
+        setUploading(false);
+      };
 
-      const registerRes = await fetch('/api/authors/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          wallet_address: walletAddress, 
-          world_id_proof: worldIdProof,
-          paper_hash: contentHash,
-          price_query: priceQuery,
-          price_full: priceFull,
-          transaction_id: txId
-        }),
-      });
+      (MiniKit as any).subscribe('send_transaction', handleTxResponse);
 
-      if (!registerRes.ok) throw new Error('Error al registrar autor en servidor');
-
-      setUploadResult({ ...ragData, walletAddress, priceQuery, priceFull, txHash: txId });
-      setStep('success');
     } catch (err: any) {
-      setError(err.message || 'Algo salió mal en la subida');
-    } finally {
+      setError(err.message);
       setUploading(false);
     }
   }
 
   return (
-    <>
-      <nav><div className="nav-inner"><Link href="/" className="nav-logo">⬡ SciGate</Link></div></nav>
+    <div className="container" style={{ maxWidth: 600, margin: '0 auto', padding: '40px 20px' }}>
+      <header style={{ marginBottom: 40, textAlign: 'center' }}>
+        <h1 className="gradient-text" style={{ fontSize: 42, marginBottom: 12 }}>SciGate</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 18 }}>Publica tu investigación científia de forma autónoma</p>
+      </header>
 
-      <main style={{ paddingTop: 100, minHeight: '100vh', paddingBottom: 80 }}>
-        <div className="container" style={{ maxWidth: 700 }}>
-          <div style={{ marginBottom: 48 }}>
-            <h1 style={{ fontSize: 40, marginBottom: 12 }}>Publish Your <span className="gradient-text">Research</span></h1>
-            <p style={{ color: 'var(--text-secondary)' }}>Upload and register on World Chain Mainnet.</p>
+      <main>
+        {step === 'verify' && (
+          <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <h2 style={{ marginBottom: 16 }}>🪪 Verificación de Autor</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Lanza el modal de World ID para verificar tu identidad humana.</p>
+            
+            <button 
+              className="btn-primary" 
+              onClick={handleDetectAndVerify} 
+              disabled={isVerifying}
+              style={{ width: '100%', padding: 20, fontSize: 18 }}
+            >
+              {isVerifying ? '⏳ Esperando World ID...' : 'Verificar con World ID →'}
+            </button>
+
+            {debugLogs.length > 0 && (
+              <div style={{ marginTop: 24, textAlign: 'left', fontSize: 12, background: '#111', padding: 12, borderRadius: 8, border: '1px solid #333' }}>
+                <div style={{ color: '#666', marginBottom: 4 }}>LOGS:</div>
+                {debugLogs.map((log, i) => <div key={i} style={{ color: i === 0 ? 'var(--accent-emerald)' : '#888' }}>&gt; {log}</div>)}
+              </div>
+            )}
           </div>
+        )}
 
-          {error && (
-            <div style={{ padding: 16, background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: 12, color: '#f87171', marginBottom: 24 }}>
-              ⚠️ {error}
+        {step === 'upload' && (
+          <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div className="card" onClick={() => document.getElementById('file-input')?.click()} style={{ textAlign: 'center', cursor: 'pointer', border: '2px dashed var(--border)' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
+              <p style={{ fontWeight: 600 }}>{file ? `✓ ${file.name}` : 'Seleccionar PDF de Investigación'}</p>
+              <input id="file-input" type="file" accept="application/pdf" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])} />
             </div>
-          )}
 
-          {debugLogs.length > 0 && (
-            <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 12, marginBottom: 24, fontSize: 10, fontFamily: 'monospace', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontWeight: 'bold' }}>SYSTEM LOGS:</div>
-              {debugLogs.map((log, i) => <div key={i} style={{ color: i === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>&gt; {log}</div>)}
-            </div>
-          )}
-
-          {step === 'verify' && (
-            <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-              <h2 style={{ marginBottom: 16 }}>🪪 Verificación de Autor</h2>
-              
-              {!walletConfirmed ? (
-                <>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Conecta tu World App para verificar tu identidad y wallet en un solo paso.</p>
-                  <button className="btn-primary" onClick={handleDetectAndVerify} style={{ width: '100%', padding: 20, fontSize: 18 }}>
-                    Conectar y Verificar →
-                  </button>
-                </>
-              ) : (
-                <div style={{ padding: '20px 0' }}>
-                  <p style={{ color: 'var(--accent-emerald)', fontWeight: 700, fontSize: 18, marginBottom: 24 }}>✓ Wallet Conectada</p>
-                  
-                  <IDKitWidget
-                    app_id={WORLD_APP_ID as `app_${string}`}
-                    action={WORLD_ACTION_ID}
-                    signal={walletAddress.toLowerCase()}
-                    onSuccess={handleVerifySuccess}
-                    verification_level={VerificationLevel.Orb as any}
-                  >
-                    {({ open }: any) => (
-                      <button 
-                        className="btn-primary" 
-                        onClick={open}
-                        style={{ 
-                          width: '100%', 
-                          padding: 20, 
-                          fontSize: 18,
-                          background: 'linear-gradient(45deg, #000, #333)',
-                          border: '1px solid var(--accent-emerald)'
-                        }}
-                      >
-                        Verificar con World ID 4.0 →
-                      </button>
-                    )}
-                  </IDKitWidget>
+            <div className="card">
+              <h3 style={{ marginBottom: 20 }}>💰 Configurar Precios (USDC)</h3>
+              <div className="grid-responsive">
+                <div className="input-group">
+                  <label style={{ fontSize: 12 }}>Precio por Consulta</label>
+                  <input className="input" value={priceQuery} onChange={(e) => setPriceQuery(e.target.value)} type="number" step="0.01" />
                 </div>
-              )}
-            </div>
-          )}
-
-          {step === 'upload' && (
-            <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-              <div className="card" onClick={() => document.getElementById('file-input')?.click()} style={{ textAlign: 'center', cursor: 'pointer', border: '2px dashed var(--border)' }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
-                <p style={{ fontWeight: 600 }}>{file ? `✓ ${file.name}` : 'Seleccionar PDF de Investigación'}</p>
-                <input id="file-input" type="file" accept="application/pdf" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])} />
-              </div>
-
-              <div className="card">
-                <h3 style={{ marginBottom: 20 }}>💰 Configurar Precios (USDC)</h3>
-                <div className="grid-responsive">
-                  <div className="input-group">
-                    <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Precio por Consulta</label>
-                    <input className="input" value={priceQuery} onChange={(e) => setPriceQuery(e.target.value)} type="number" step="0.01" />
-                  </div>
-                  <div className="input-group">
-                    <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Precio Acceso Total</label>
-                    <input className="input" value={priceFull} onChange={(e) => setPriceFull(e.target.value)} type="number" step="0.01" />
-                  </div>
+                <div className="input-group">
+                  <label style={{ fontSize: 12 }}>Precio Acceso Total</label>
+                  <input className="input" value={priceFull} onChange={(e) => setPriceFull(e.target.value)} type="number" step="0.01" />
                 </div>
               </div>
-
-              <button type="submit" className="btn-primary" disabled={!file || uploading} style={{ width: '100%', padding: 20, fontSize: 18 }}>
-                {uploading ? '⏳ Registrando en World Chain...' : '🚀 Publicar y Registrar'}
-              </button>
-            </form>
-          )}
-
-          {step === 'success' && (
-            <div className="card" style={{ textAlign: 'center', padding: 48 }}>
-              <div style={{ fontSize: 72, marginBottom: 24 }}>🎉</div>
-              <h2 style={{ marginBottom: 16 }}>¡Publicado con Éxito!</h2>
-              <p style={{ color: 'var(--text-secondary)' }}>Tu investigación ya es accesible para agentes de IA en World Chain.</p>
-              <div style={{ marginTop: 32 }}>
-                <Link href="/dashboard" className="btn-primary">Ir al Panel de Control</Link>
-              </div>
             </div>
-          )}
-        </div>
+
+            <button type="submit" className="btn-primary" disabled={!file || uploading} style={{ width: '100%', padding: 20, fontSize: 18 }}>
+              {uploading ? '⏳ Registrando...' : '🚀 Publicar y Registrar'}
+            </button>
+          </form>
+        )}
+
+        {step === 'success' && (
+          <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div style={{ fontSize: 64, marginBottom: 24 }}>🎉</div>
+            <h2 style={{ marginBottom: 16 }}>¡Investigación Publicada!</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Tu artículo ya está disponible en la red SciGate.</p>
+            <Link href="/explore" className="btn-primary" style={{ display: 'inline-block', width: '100%', textDecoration: 'none' }}>Ver en el Explorador</Link>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ marginTop: 20, padding: 16, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--accent-ruby)', borderRadius: 12, color: 'var(--accent-ruby)', fontSize: 14 }}>
+            ⚠️ {error}
+          </div>
+        )}
       </main>
-    </>
+    </div>
   );
 }

@@ -158,11 +158,13 @@ export default function ExplorePage() {
       });
 
       const response: any = await new Promise((resolve, reject) => {
-        const unsubscribe = (MiniKit as any).subscribe('pay', (payload: any) => {
-          unsubscribe();
+        const handlePayResponse = (payload: any) => {
+          (MiniKit as any).unsubscribe('pay', handlePayResponse);
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
-        });
+        };
+        (MiniKit as any).subscribe('pay', handlePayResponse);
+
         (MiniKit as any).commands.pay({
           reference: paymentReference,
           to: RECIPIENT,
@@ -172,7 +174,10 @@ export default function ExplorePage() {
           }],
           description: `Unlock Paper: ${selectedPaper.title || paperId}`,
         });
-        setTimeout(() => { unsubscribe(); reject(new Error('timeout')); }, 120000);
+        setTimeout(() => { 
+          (MiniKit as any).unsubscribe('pay', handlePayResponse);
+          reject(new Error('timeout')); 
+        }, 120000);
       });
 
       setPaymentStatus('Validando pago...');

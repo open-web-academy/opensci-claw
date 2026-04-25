@@ -94,19 +94,21 @@ export default function DashboardPage() {
       }
       const res: any = await new Promise((resolve, reject) => {
         const handleAuth = (payload: any) => {
-          un1(); un2();
+          (MiniKit as any).unsubscribe('wallet_auth', handleAuth);
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
         };
-        const un1 = (MiniKit as any).subscribe('wallet_auth', handleAuth);
-        const un2 = (MiniKit as any).subscribe('walletAuth', handleAuth);
+        (MiniKit as any).subscribe('wallet_auth', handleAuth);
 
         (MiniKit as any).commands.walletAuth({
           nonce: Date.now().toString(),
           requestId: 'auth_detect_dash',
           expirationTime: new Date(Date.now() + 60 * 60 * 1000),
         });
-        setTimeout(() => { un1(); un2(); reject(new Error('timeout')); }, 30000);
+        setTimeout(() => { 
+          (MiniKit as any).unsubscribe('wallet_auth', handleAuth);
+          reject(new Error('timeout')); 
+        }, 30000);
       });
       if (res.address) {
         setWalletAddress(res.address);

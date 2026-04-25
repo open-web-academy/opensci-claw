@@ -10,9 +10,13 @@ const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
-    const appId = process.env.NEXT_PUBLIC_WORLD_APP_ID ?? 'app_8d3e4ef96e0ef911d19e2e42107b16fb';
-    MiniKit.install(appId);
-    console.log('[MiniKit] Installed with appId:', appId);
+    // Inicialización MiniKit v2 (ligera)
+    try {
+      MiniKit.install('app_8d3e4ef96e0ef911d19e2e42107b16fb');
+      console.log('[MiniKit] Inicializado con v2');
+    } catch (e) {
+      console.error('[MiniKit] Error en init:', e);
+    }
   }, []);
 
   return (
