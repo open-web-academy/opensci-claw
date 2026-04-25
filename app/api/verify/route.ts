@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
             proof: zkProof,
             verification_level: verification_level ?? 'orb',
             action: 'verify-author',
-            signal: wallet_address.toLowerCase(),
+            signal: "", // Debe coincidir con el del frontend
           }),
         }
       );

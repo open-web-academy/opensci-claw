@@ -81,7 +81,7 @@ export default function UploadPage() {
 
         MiniKit.commands.verify({
           action: WORLD_ACTION_ID,
-          signal: address.toLowerCase(),
+          signal: "", // Simplificado para evitar errores de formato en el modal
         });
 
         setTimeout(() => { 
