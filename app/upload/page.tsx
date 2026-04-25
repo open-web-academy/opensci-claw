@@ -161,6 +161,18 @@ export default function UploadPage() {
               )}
             </IDKitWidget>
 
+            {/* BOTÓN DE EMERGENCIA PARA EL HACKATHON */}
+            <button 
+              onClick={() => {
+                addLog('Saltando verificación (Modo Dev)');
+                setWorldIdProof({ success: true, mock: true });
+                setStep('upload');
+              }}
+              style={{ marginTop: 16, background: 'transparent', border: '1px solid #333', color: '#666', width: '100%', padding: 10, borderRadius: 12, cursor: 'pointer', fontSize: 14 }}
+            >
+              ⏭️ Saltar verificación (Demo Mode)
+            </button>
+
             <div style={{ marginTop: 24, textAlign: 'left', fontSize: 12, background: '#111', padding: 12, borderRadius: 8, border: '1px solid #333' }}>
               <div style={{ color: '#666', marginBottom: 4 }}>LOGS:</div>
               {debugLogs.map((log, i) => <div key={i} style={{ color: i === 0 ? 'var(--accent-emerald)' : '#888' }}>&gt; {log}</div>)}
