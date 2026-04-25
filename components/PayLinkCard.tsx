@@ -116,7 +116,7 @@ export default function PayLinkCard({ paperId, title, author, priceUsdc, serverU
       const txResponse: any = await new Promise((resolve, reject) => {
         const handleTxResponse = (payload: any) => {
           (MiniKit as any).unsubscribe('send_transaction', handleTxResponse);
-          fetch('https://scigate.onrender.com/api/debug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Card Tx Res', data: payload }) }).catch(() => {});
+          fetch('/api/debug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Card Tx Res', data: payload }) }).catch(() => {});
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
         };

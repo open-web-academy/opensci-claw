@@ -160,7 +160,7 @@ export default function ExplorePage() {
       const response: any = await new Promise((resolve, reject) => {
         const handlePayResponse = (payload: any) => {
           (MiniKit as any).unsubscribe('pay', handlePayResponse);
-          fetch('https://scigate.onrender.com/api/debug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Explore Pay Res', data: payload }) }).catch(() => {});
+          fetch('/api/debug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Explore Pay Res', data: payload }) }).catch(() => {});
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
         };

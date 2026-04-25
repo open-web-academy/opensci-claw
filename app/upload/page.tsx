@@ -28,7 +28,7 @@ export default function UploadPage() {
   const addLog = (msg: string, data?: any) => {
     setDebugLogs(prev => [msg, ...prev].slice(0, 5));
     console.log(`[MOBILE_DEBUG] ${msg}`, data || '');
-    fetch(`${RENDER_URL}/api/debug`, {
+    fetch('/api/debug', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg, data }),
@@ -94,17 +94,9 @@ export default function UploadPage() {
 
       (MiniKit as any).subscribe('verify', handleVerifyResponse);
 
-      // 3. Lanzar verificación
-      if (typeof (MiniKit as any).verify === 'function') {
-        addLog('Llamando .verify()...');
-        (MiniKit as any).verify(verifyArgs);
-      } else if (typeof (MiniKit as any).commands?.verify === 'function') {
-        addLog('Llamando .commands.verify()...');
-        (MiniKit as any).commands.verify(verifyArgs);
-      } else {
-        addLog('Intentando llamada directa a .verify()...');
-        (MiniKit as any).verify(verifyArgs);
-      }
+      // 3. Lanzar verificación (DIRECTO, sin tocar .commands)
+      addLog('Lanzando .verify() directo...');
+      (MiniKit as any).verify(verifyArgs);
 
     } catch (err: any) {
       addLog(`Error crítico: ${err.message}`);
