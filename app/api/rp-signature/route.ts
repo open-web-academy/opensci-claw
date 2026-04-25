@@ -47,8 +47,11 @@ export async function POST(req: NextRequest) {
       action,
     });
 
+    const rpId = process.env['NEXT_PUBLIC_WORLD_RP_ID'] || process.env['RP_ID'] || process.env['WORLD_ID_RP_ID'] || 'rp_9ca69f8de419f87b';
+
     return NextResponse.json({
-      sig,
+      rp_id: rpId,
+      signature: sig,
       nonce,
       created_at: createdAt,
       expires_at: expiresAt,

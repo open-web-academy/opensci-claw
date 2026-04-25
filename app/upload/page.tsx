@@ -88,20 +88,22 @@ export default function UploadPage() {
       
       let idkitResult: any = null;
 
-      // ── PASO 2: Obtener firma RP del backend (Necesario para el Simulador/IDKit) ──
-      addLog('Preparando seguridad World ID...');
-      const rpSigRes = await fetch(`${API_URL}/api/world-id/rp-context`, {
+      // ── PASO 2: Obtener firma RP del backend (World ID 4.0) ──
+      addLog('Preparando firma World ID v4...');
+      const rpSigRes = await fetch('/api/rp-signature', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: WORLD_ACTION_ID,
-          signal: 'scigate-auth-v1', // Signal fijo para máxima estabilidad
-          app_id: WORLD_APP_ID
         }),
       });
 
-      if (!rpSigRes.ok) throw new Error('Error de comunicación con el servidor World ID');
+      if (!rpSigRes.ok) {
+        const errData = await rpSigRes.json().catch(() => ({}));
+        throw new Error('Error firma RP: ' + (errData.error || rpSigRes.status));
+      }
       const rpSig = await rpSigRes.json();
+      addLog('Firma v4 obtenida ✓');
 
       // ── PASO 3: Lanzar verificación IDKit ──
       addLog('Lanzando Verificación...');
@@ -110,7 +112,7 @@ export default function UploadPage() {
         app_id: WORLD_APP_ID, 
         action: WORLD_ACTION_ID, 
         rp_context: {
-          rp_id: RP_ID,
+          rp_id: rpSig.rp_id || RP_ID,
           nonce: rpSig.nonce,
           created_at: rpSig.created_at,
           expires_at: rpSig.expires_at,
