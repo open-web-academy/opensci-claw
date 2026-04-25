@@ -189,9 +189,9 @@ export default function ExplorePage() {
 
       if (transactionId) {
         setPaymentStatus('✅ ¡Éxito! Abriendo paper...');
-        console.log('✅ Payment Success on Sepolia! Hash:', transactionId);
+        console.log('✅ Payment Success on Mainnet! Hash:', transactionId);
         
-        // Enviamos el Hash real de Sepolia al servidor para verificación criptográfica
+        // Enviamos el Hash real de Mainnet al servidor para verificación criptográfica
         setPaidPapers(prev => ({ ...prev, [paperId]: transactionId }));
         setNeedsPayment(false);
         setIsPaymentModalOpen(false);
@@ -244,14 +244,14 @@ export default function ExplorePage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ color: 'var(--text-muted)' }}>Red</span>
-                <span>World Chain Sepolia</span>
+                <span>World Chain Mainnet</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ color: 'var(--text-muted)' }}>ID App</span>
                 <span style={{ fontSize: 10, opacity: 0.6 }}>app_8d3...</span>
               </div>
               <div style={{ fontSize: 9, color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: 8, marginTop: 8 }}>
-                Modo: <span style={{ color: 'var(--accent-emerald)' }}>Staging (Testnet)</span>
+                Modo: <span style={{ color: 'var(--accent-emerald)' }}>Producción (Mainnet)</span>
               </div>
             </div>
 

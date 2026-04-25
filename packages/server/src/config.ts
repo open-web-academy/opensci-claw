@@ -15,7 +15,7 @@ export const IS_PRODUCTION = NODE_ENV === 'production';
  *   - Manual wallet fallback UI is shown
  * NEVER set to true in production.
  */
-export const DEMO_MODE = process.env.DEMO_MODE === 'true';
+export const DEMO_MODE = process.env.DEMO_MODE === 'true'; // Apagado por defecto para Producción
 
 if (DEMO_MODE && IS_PRODUCTION) {
   console.warn('\n────────────────────────────────────────────────────────────────────────');
@@ -29,7 +29,7 @@ export const PORT = parseInt(process.env.PORT ?? '3001', 10);
 
 // ── Blockchain networks (x402 network identifiers) ──────────
 // NOTE: the Solana identifier must match between server and RAG. Keep them in sync.
-export const WORLD_CHAIN = 'eip155:4801' as const; // Cambiado a Sepolia (Testnet)
+export const WORLD_CHAIN = 'eip155:480' as const; // Cambiado a Mainnet (Producción)
 export const BASE = 'eip155:8453' as const;
 /**
  * Solana Mainnet identifier used by x402.
@@ -57,7 +57,7 @@ export const PAY_TO_ADDRESS_SOLANA = process.env.PAY_TO_ADDRESS_SOLANA ?? '';
 export const RECIPIENT = PAY_TO_ADDRESS;
 
 // ── On-chain registry ───────────────────────────────────────
-export const WORLD_CHAIN_RPC = process.env.WORLD_CHAIN_RPC ?? 'https://worldchain-sepolia.g.alchemy.com/public';
+export const WORLD_CHAIN_RPC = process.env.WORLD_CHAIN_RPC ?? 'https://rpc.worldchain.dev';
 export const PAPER_REGISTRY_ADDRESS = (process.env.PAPER_REGISTRY_ADDRESS ?? '') as `0x${string}` | '';
 /**
  * Hot wallet used to call recordAccess() on-chain after paid accesses.

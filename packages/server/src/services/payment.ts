@@ -53,10 +53,8 @@ export async function verifyUsdcPayment(
   }
 
   for (const log of receipt.logs) {
-    // SEPOLIA TESTNET FIX: Comentamos la verificación estricta de la dirección de USDC.
-    // La World App usa un token de prueba interno para USDC en Sepolia,
-    // al omitir esto aceptaremos cualquier Transferencia ERC-20 hacia nuestra billetera.
-    // if (log.address.toLowerCase() !== WORLD_USDC.toLowerCase()) continue;
+    // MAINNET CHECK: Verificamos estrictamente la dirección del USDC oficial
+    if (log.address.toLowerCase() !== WORLD_USDC.toLowerCase()) continue;
     
     if (log.topics[0] !== TRANSFER_TOPIC) continue;
 
