@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
             merkle_root,
             proof: zkProof,
             verification_level: verification_level ?? 'orb',
-            action: process.env.WORLD_ACTION_ID ?? process.env.NEXT_PUBLIC_WORLD_ACTION_ID ?? 'verify-author',
+            action: 'verify-author',
             signal: wallet_address.toLowerCase(),
           }),
         }

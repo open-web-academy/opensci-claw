@@ -10,7 +10,7 @@ const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
 const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? 'http://localhost:8000';
 const PAPER_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_PAPER_REGISTRY_ADDRESS ?? process.env.PAPER_REGISTRY_ADDRESS ?? '';
 const WORLD_APP_ID = "app_8d3e4ef96e0ef911d19e2e42107b16fb"; // VERIFICA QUE ESTÉ EN PRODUCCIÓN
-const WORLD_ACTION_ID = "scigate-auth"; // VERIFICA EL ID EXACTO EN EL PORTAL
+const WORLD_ACTION_ID = "verify-author"; // Tomado de tu captura del portal
 
 type Step = 'verify' | 'upload' | 'success';
 
