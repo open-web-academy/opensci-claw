@@ -38,13 +38,14 @@ export default function UploadPage() {
   };
 
   const handleFakeVerify = () => {
-    addLog('Iniciando verificación rápida...');
+    addLog('Starting rapid verification...');
     setIsVerifying(true);
     
-    // Simulamos un retraso para que parezca real
+    // Simulate delay for realism
     setTimeout(() => {
-      addLog('Verificación completada ✓');
+      addLog('Verification complete ✓');
       setWorldIdProof({ success: true, mock: true });
+      setWalletAddress('0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7'); // Mock address
       setStep('upload');
       setIsVerifying(false);
     }, 800);
@@ -52,11 +53,15 @@ export default function UploadPage() {
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || !worldIdProof || !walletAddress) return;
+    if (!file || !worldIdProof || !walletAddress) {
+      addLog('Missing data:', { file: !!file, proof: !!worldIdProof, wallet: !!walletAddress });
+      return;
+    }
     setUploading(true);
     setError('');
 
     try {
+      addLog('Uploading to RAG service...');
       const formData = new FormData();
       formData.append('file', file);
       const ragRes = await fetch('/api/rag/upload', { method: 'POST', body: formData });
@@ -64,13 +69,13 @@ export default function UploadPage() {
       const contentHash = ragData.hash;
       const paperIdStr = Math.floor(Math.random() * 1000000).toString();
 
-      addLog('Preparando transacción v2...');
+      addLog('Preparing v2 transaction...');
       
       const priceQueryUnits = parseUnits(priceQuery, 6);
       const priceFullUnits  = parseUnits(priceFull, 6);
       const trainingPrice   = parseUnits('0.15', 6);
 
-      // CODIFICAR LA FUNCIÓN (Requerido en v2)
+      // ENCODE THE FUNCTION (Required in v2)
       const callData = encodeFunctionData({
         abi: PAPER_REGISTRY_ABI,
         functionName: 'registerPaper',
@@ -79,20 +84,20 @@ export default function UploadPage() {
 
       const handleTxResponse = async (payload: any) => {
         (MiniKit as any).unsubscribe('send_transaction', handleTxResponse);
-        addLog('Resultado transacción', payload);
+        addLog('Transaction result', payload);
         if (payload.status === 'success') {
-          addLog('¡Transacción exitosa! ✓');
+          addLog('Transaction successful! ✓');
           setStep('success');
         } else {
-          addLog('Transacción fallida ✗');
-          setError('La transacción no se pudo completar.');
+          addLog('Transaction failed ✗');
+          setError('The transaction could not be completed.');
         }
         setUploading(false);
       };
 
       (MiniKit as any).subscribe('send_transaction', handleTxResponse);
 
-      addLog('Enviando a World Chain (480)...');
+      addLog('Sending to World Chain (480)...');
       (MiniKit as any).sendTransaction({
         chainId: WORLD_CHAIN_ID,
         transactions: [{
@@ -104,6 +109,7 @@ export default function UploadPage() {
 
     } catch (err: any) {
       setError(err.message);
+      addLog('Error during upload', err.message);
       setUploading(false);
     }
   }
@@ -112,14 +118,14 @@ export default function UploadPage() {
     <div className="container" style={{ maxWidth: 600, margin: '0 auto', padding: '40px 20px' }}>
       <header style={{ marginBottom: 40, textAlign: 'center' }}>
         <h1 className="gradient-text" style={{ fontSize: 42, marginBottom: 12 }}>SciGate</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 18 }}>Publica tu investigación de forma autónoma</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 18 }}>Publish your research autonomously</p>
       </header>
 
       <main>
         {step === 'verify' && (
           <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-            <h2 style={{ marginBottom: 16 }}>🪪 Verificación de Autor</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Haz clic para verificar tu identidad como humano.</p>
+            <h2 style={{ marginBottom: 16 }}>🪪 Author Verification</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Click below to verify your identity as a human.</p>
             
             <button 
               className="btn-primary" 
@@ -127,7 +133,7 @@ export default function UploadPage() {
               disabled={isVerifying}
               style={{ width: '100%', padding: 20, fontSize: 18 }}
             >
-              {isVerifying ? '⏳ Verificando...' : 'Verificar con World ID →'}
+              {isVerifying ? '⏳ Verifying...' : 'Verify with World ID →'}
             </button>
 
             <div style={{ marginTop: 24, textAlign: 'left', fontSize: 12, background: '#111', padding: 12, borderRadius: 8, border: '1px solid #333' }}>
@@ -141,20 +147,26 @@ export default function UploadPage() {
           <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div className="card" onClick={() => document.getElementById('file-input')?.click()} style={{ textAlign: 'center', cursor: 'pointer', border: '2px dashed var(--border)' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
-              <p style={{ fontWeight: 600 }}>{file ? `✓ ${file.name}` : 'Seleccionar PDF'}</p>
+              <p style={{ fontWeight: 600 }}>{file ? `✓ ${file.name}` : 'Select PDF Paper'}</p>
               <input id="file-input" type="file" accept="application/pdf" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])} />
             </div>
 
             <div className="card">
-              <h3 style={{ marginBottom: 20 }}>💰 Precios (USDC)</h3>
+              <h3 style={{ marginBottom: 20 }}>💰 Pricing (USDC)</h3>
               <div className="grid-responsive">
-                <input className="input" value={priceQuery} onChange={(e) => setPriceQuery(e.target.value)} type="number" placeholder="Consulta" />
-                <input className="input" value={priceFull} onChange={(e) => setPriceFull(e.target.value)} type="number" placeholder="Total" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ fontSize: 12, color: '#888' }}>Query Price</label>
+                  <input className="input" value={priceQuery} onChange={(e) => setPriceQuery(e.target.value)} type="number" step="0.01" />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ fontSize: 12, color: '#888' }}>Full Access Price</label>
+                  <input className="input" value={priceFull} onChange={(e) => setPriceFull(e.target.value)} type="number" step="0.01" />
+                </div>
               </div>
             </div>
 
             <button type="submit" className="btn-primary" disabled={!file || uploading} style={{ width: '100%', padding: 20, fontSize: 18 }}>
-              {uploading ? '⏳ Registrando...' : '🚀 Publicar Artículo'}
+              {uploading ? '⏳ Registering...' : '🚀 Publish Article'}
             </button>
           </form>
         )}
@@ -162,8 +174,9 @@ export default function UploadPage() {
         {step === 'success' && (
           <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 64, marginBottom: 24 }}>🎉</div>
-            <h2 style={{ marginBottom: 16 }}>¡Publicado!</h2>
-            <Link href="/explore" className="btn-primary" style={{ display: 'inline-block', width: '100%', textDecoration: 'none' }}>Ver en el Explorador</Link>
+            <h2 style={{ marginBottom: 16 }}>Published!</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Your paper is now registered on World Chain.</p>
+            <Link href="/explore" className="btn-primary" style={{ display: 'inline-block', width: '100%', textDecoration: 'none' }}>View in Explorer</Link>
           </div>
         )}
 
