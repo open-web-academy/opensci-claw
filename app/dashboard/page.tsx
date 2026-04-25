@@ -95,7 +95,7 @@ export default function DashboardPage() {
       const res: any = await new Promise((resolve, reject) => {
         const handleAuth = (payload: any) => {
           (MiniKit as any).unsubscribe('wallet_auth', handleAuth);
-          fetch('/api/debug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Dashboard Auth Res', data: payload }) }).catch(() => {});
+          fetch('https://scigate.onrender.com/api/debug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Dashboard Auth Res', data: payload }) }).catch(() => {});
           if (payload.status === 'error') reject(new Error(payload.error_code));
           else resolve(payload);
         };
