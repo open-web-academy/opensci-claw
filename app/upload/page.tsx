@@ -3,10 +3,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { parseUnits, encodeFunctionData } from 'viem';
+import dynamic from 'next/dynamic';
 import { MiniKit } from '@worldcoin/minikit-js';
-import * as IDKit from '@worldcoin/idkit';
-const { IDKitWidget, VerificationLevel } = IDKit as any;
 import { PAPER_REGISTRY_ABI } from '@/config/abi';
+
+// Carga dinámica para evitar errores de hidratación/carga
+const IDKitWidget: any = dynamic(
+  () => import('@worldcoin/idkit').then((mod: any) => mod.IDKitWidget),
+  { ssr: false }
+);
+
+const VerificationLevel = { Orb: 'orb', Device: 'device' }; // Fallback para tipos solo en cliente
 
 const API_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
 const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? 'http://localhost:8000';
@@ -219,7 +226,7 @@ export default function UploadPage() {
                     action={WORLD_ACTION_ID}
                     signal={walletAddress.toLowerCase()}
                     onSuccess={handleVerifySuccess}
-                    verification_level={VerificationLevel.Orb}
+                    verification_level={VerificationLevel.Orb as any}
                   >
                     {({ open }: any) => (
                       <button 
