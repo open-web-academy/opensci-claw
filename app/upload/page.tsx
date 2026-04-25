@@ -3,9 +3,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { parseUnits, encodeFunctionData } from 'viem';
+import dynamic from 'next/dynamic';
 import { MiniKit } from '@worldcoin/minikit-js';
 import { PAPER_REGISTRY_ABI } from '@/config/abi';
 
+// Importación dinámica para evitar errores de exportación/SSR
+const IDKitWidget: any = dynamic(
+  () => import('@worldcoin/idkit').then((mod) => (mod as any).IDKitWidget),
+  { ssr: false }
+);
+
+const WORLD_APP_ID = "app_8d3e4ef96e0ef911d19e2e42107b16fb";
 const WORLD_ACTION_ID = "verify-author";
 const PAPER_REGISTRY_ADDRESS = (process.env.NEXT_PUBLIC_PAPER_REGISTRY_ADDRESS as `0x${string}`) ?? '0x0000000000000000000000000000000000000000';
 const RENDER_URL = 'https://scigate.onrender.com';
@@ -36,83 +44,26 @@ export default function UploadPage() {
     }).catch(() => {});
   };
 
-  const handleDetectAndVerify = async () => {
-    setError('');
-    addLog('--- INICIANDO VERIFICACIÓN v2 ---');
-    
+  const handleVerifySuccess = async (result: any) => {
+    addLog('¡Verificación exitosa (IDKit)!', result);
+    setWorldIdProof(result);
+
     try {
-
-      let address = MiniKit.user?.walletAddress || '';
-      if (!address) {
-        addLog('Pidiendo wallet de respaldo.');
-        address = '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
-      }
-
-      setWalletAddress(address);
-      setIsVerifying(true);
-
-      const verifyArgs = {
-        action: WORLD_ACTION_ID,
-        signal: address.toLowerCase(),
-      };
-
-      const handleVerifyResponse = async (payload: any) => {
-        (MiniKit as any).unsubscribe('verify', handleVerifyResponse);
-        addLog('Respuesta modal recibida', payload);
-
-        if (payload.status === 'error') {
-          addLog(`Error en modal: ${payload.error_code}`);
-          setError('Error en el modal de World ID');
-          setIsVerifying(false);
-          return;
-        }
-
-        addLog('¡Verificación OK! Registrando en backend...');
-        setWorldIdProof(payload);
-
-        try {
-          const backendRes = await fetch('/api/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ proof: payload, wallet_address: address }),
-          });
-          const verifyData = await backendRes.json();
-          if (!verifyData.success) throw new Error(verifyData.error || 'Fallo backend');
-          
-          addLog('Registro en backend exitoso ✓');
-          setStep('upload');
-        } catch (e: any) {
-          setError(e.message);
-          addLog(`Error backend: ${e.message}`);
-        } finally {
-          setIsVerifying(false);
-        }
-      };
-
-      (MiniKit as any).subscribe('verify', handleVerifyResponse);
-
-      addLog('Lanzando World ID (Multi-ruta)...');
+      const address = walletAddress || MiniKit.user?.walletAddress || '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7';
+      const backendRes = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof: result, wallet_address: address }),
+      });
+      const verifyData = await backendRes.json();
+      if (!verifyData.success) throw new Error(verifyData.error || 'Fallo backend');
       
-      const mAny = MiniKit as any;
-      if (typeof mAny.verify === 'function') {
-        addLog('Ruta: .verify()');
-        mAny.verify(verifyArgs);
-      } else if (typeof mAny.commandsAsync?.verify === 'function') {
-        addLog('Ruta: .commandsAsync.verify()');
-        mAny.commandsAsync.verify(verifyArgs);
-      } else if (typeof mAny.commands?.verify === 'function') {
-        // Solo como último recurso, aunque lance advertencia
-        addLog('Ruta: .commands.verify()');
-        mAny.commands.verify(verifyArgs);
-      } else {
-        addLog('Error: No se encontró método verify en ninguna ruta.');
-        setError('No se pudo encontrar el comando de verificación en el SDK.');
-        setIsVerifying(false);
-      }
-
-    } catch (err: any) {
-      addLog(`Error crítico: ${err.message}`);
-      setError(err.message);
+      addLog('Registro en backend exitoso ✓');
+      setStep('upload');
+    } catch (e: any) {
+      setError(e.message);
+      addLog(`Error backend: ${e.message}`);
+    } finally {
       setIsVerifying(false);
     }
   };
@@ -186,11 +137,29 @@ export default function UploadPage() {
         {step === 'verify' && (
           <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
             <h2 style={{ marginBottom: 16 }}>🪪 Verificación de Autor</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Lanza el modal de World ID para verificar tu identidad.</p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Usa el modal oficial de World ID para verificar tu humanidad.</p>
             
-            <button className="btn-primary" onClick={handleDetectAndVerify} disabled={isVerifying} style={{ width: '100%', padding: 20, fontSize: 18 }}>
-              {isVerifying ? '⏳ Esperando...' : 'Verificar con World ID →'}
-            </button>
+            <IDKitWidget
+              app_id={WORLD_APP_ID as `app_${string}`}
+              action={WORLD_ACTION_ID}
+              onSuccess={handleVerifySuccess}
+              handleVerify={() => addLog('Procesando prueba...')}
+              verification_level="device"
+              signal={walletAddress || MiniKit.user?.walletAddress || '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7'}
+            >
+              {({ open }: any) => (
+                <button 
+                  className="btn-primary" 
+                  onClick={() => {
+                    addLog('Abriendo IDKitWidget...');
+                    open();
+                  }} 
+                  style={{ width: '100%', padding: 20, fontSize: 18 }}
+                >
+                  Verificar con World ID →
+                </button>
+              )}
+            </IDKitWidget>
 
             <div style={{ marginTop: 24, textAlign: 'left', fontSize: 12, background: '#111', padding: 12, borderRadius: 8, border: '1px solid #333' }}>
               <div style={{ color: '#666', marginBottom: 4 }}>LOGS:</div>
