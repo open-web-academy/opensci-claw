@@ -5,10 +5,14 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from '@/config/wagmi';
 import { MiniKitProvider } from '@worldcoin/minikit-js/minikit-provider';
+import { MiniKit } from '@worldcoin/minikit-js';
 
 const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    MiniKit.install();
+  }, []);
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>

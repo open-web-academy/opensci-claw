@@ -112,14 +112,20 @@ export default function UploadPage() {
       (MiniKit as any).subscribe('send_transaction', handleTxResponse);
 
       addLog('Sending to World Chain (480)...');
-      (MiniKit as any).sendTransaction({
-        chainId: WORLD_CHAIN_ID,
-        transactions: [{
-          to: PAPER_REGISTRY_ADDRESS,
-          data: callData,
-          value: '0',
-        }],
-      });
+      try {
+        (MiniKit as any).sendTransaction({
+          chainId: WORLD_CHAIN_ID,
+          transactions: [{
+            to: PAPER_REGISTRY_ADDRESS,
+            data: callData,
+            value: '0',
+          }],
+        });
+      } catch (sendErr: any) {
+        addLog('Send Error:', sendErr.message);
+        setError('Failed to trigger wallet modal.');
+        setUploading(false);
+      }
 
     } catch (err: any) {
       setError(err.message);
