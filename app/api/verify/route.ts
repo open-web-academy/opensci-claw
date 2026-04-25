@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       // ── New IDKit v4 verification flow ──
       // Send the full IDKit result to the v4 verify endpoint
       const verifyRes = await fetch(
-        `https://developer.world.org/api/v4/verify/${RP_ID}`,
+        `https://developer.world.org/api/v4/verify/${WORLD_APP_ID}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
