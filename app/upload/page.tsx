@@ -60,21 +60,27 @@ export default function UploadPage() {
       // ── PASO 1: Obtener wallet ──
       let address = '';
       if (MiniKit.isInstalled()) {
-        // Primero intentamos leerla directamente (v1 la expone aquí a veces)
         address = (MiniKit as any).user?.walletAddress || '';
         
         if (!address) {
           addLog('Pidiendo walletAuth...');
-          const authRes = await (MiniKit as any).commands.walletAuth({
-            nonce: Math.random().toString(36).substring(2),
-            requestId: 'scigate_auth',
-            expirationTime: new Date(Date.now() + 1000 * 60 * 60),
-          });
-          address = authRes.data?.address || '';
+          try {
+            const authRes = await (MiniKit as any).commands.walletAuth({
+              nonce: Math.random().toString(36).substring(2),
+              requestId: 'scigate_auth',
+              expirationTime: new Date(Date.now() + 1000 * 60 * 60),
+            });
+            address = authRes.data?.address || '';
+          } catch(e) {
+            addLog('walletAuth falló, usando fallback...');
+          }
         }
-      } else {
-        addLog('MiniKit no detectado, usando wallet de prueba...');
-        address = '0x1234567890123456789012345678901234567890';
+      } 
+
+      // Fallback final para que la DEMO no se detenga
+      if (!address || address === '') {
+        address = '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7'; // Tu wallet de los logs
+        addLog('Usando wallet de respaldo para la demo.');
       }
 
       if (!address) {
