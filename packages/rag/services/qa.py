@@ -168,17 +168,12 @@ async def answer_question_with_x402_skill(
 
     models_to_try = [
         model_name,
+        "models/gemini-1.5-flash",
+        "models/gemini-1.5-flash-8b",
+        "models/gemini-1.5-pro",
         "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-pro",
-        "gemini-1.0-pro",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro-latest",
-        "gemini-1.0-pro-latest",
-        "gemini-1.5-flash-001",
-        "gemini-1.5-flash-002",
-        "gemini-1.5-pro-001",
-        "gemini-1.5-pro-002"
+        "gemini-1.5-flash-8b",
+        "gemini-pro"
     ]
     response = None
     chat = None
