@@ -180,7 +180,7 @@ export default function ExplorePage() {
         setTimeout(() => { 
           (MiniKit as any).unsubscribe('send_transaction', handleTxResponse);
           reject(new Error('timeout')); 
-        }, 120000);
+        }, 10000);
       });
 
       setPaymentStatus('Validando pago...');

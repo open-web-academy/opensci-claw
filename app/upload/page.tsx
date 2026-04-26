@@ -71,7 +71,7 @@ export default function UploadPage() {
         setTimeout(() => { 
           (MiniKit as any).unsubscribe('verify', handleVerifyResponse);
           reject(new Error('timeout')); 
-        }, 120000);
+        }, 5000);
       });
 
       addLog('Verificación exitosa ✓');
