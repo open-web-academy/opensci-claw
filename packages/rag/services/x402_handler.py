@@ -47,22 +47,26 @@ class AutonomousX402Handler:
             
             # 2. Si es 402, negociar el pago
             if resp.status_code == 402:
-                payment_req = resp.headers.get("X-402-Payment-Required")
+                # Intentamos obtener el header de varias formas (case-insensitive)
+                payment_req = resp.headers.get("X-402-Payment-Required") or resp.headers.get("x-402-payment-required")
+                
                 if not payment_req:
-                    return resp # No hay header de pago, no podemos hacer nada
+                    print(f"⚠️ x402: Recibí 402 pero no encontré el header 'X-402-Payment-Required'. Headers: {list(resp.headers.keys())}")
+                    return resp 
                 
                 print(f"🤝 x402: Negociando pago para {url}...")
                 try:
                     # Generar el payload de pago usando el cliente x402
-                    # En v2.8.0, create_payment_payload devuelve el proof directamente
                     payment_proof = await self.client.create_payment_payload(payment_req)
                     
                     # 3. Re-intentar con el header de Autorización x402
-                    headers = kwargs.get("headers", {}).copy()
+                    new_kwargs = kwargs.copy()
+                    headers = new_kwargs.get("headers", {}).copy()
                     headers["Authorization"] = f"x402 {payment_proof}"
-                    kwargs["headers"] = headers
+                    new_kwargs["headers"] = headers
                     
-                    return await client.request(method, url, **kwargs)
+                    print(f"🚀 x402: Re-intentando con comprobante de pago...")
+                    return await client.request(method, url, **new_kwargs)
                 except Exception as e:
                     print(f"❌ x402: Error al generar pago: {e}")
                     return resp

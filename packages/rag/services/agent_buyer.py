@@ -19,6 +19,7 @@ async def search_and_buy_context(query: str, limit: int = 3) -> List[Dict[str, A
     except Exception as e:
         raise RuntimeError(f"x402 handler not initialized: {e}")
 
+    query = query.strip().strip('"').strip("'")
     print(f"🕵️  Agent Buyer: searching catalog for '{query}'")
 
     # Usamos un timeout más largo (60s) por si Render está durmiendo
