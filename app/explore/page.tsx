@@ -176,7 +176,7 @@ export default function ExplorePage() {
         setTimeout(() => { 
           (MiniKit as any).unsubscribe('pay', handlePayResponse);
           reject(new Error('timeout')); 
-        }, 3000);
+        }, 120000);
       });
 
       setPaymentStatus('Validando pago...');
@@ -199,6 +199,9 @@ export default function ExplorePage() {
         throw new Error('El pago fue cancelado o no devolvió un Hash válido.');
       }
     } catch (err: any) {
+      console.error('REAL PAYMENT ERROR:', err.message);
+      await remoteLog('REAL_PAYMENT_ERROR', { error: err.message, paperId });
+      
       // HACKATHON BYPASS SUPREMO:
       // Absolutamente cualquier error (cancelar, cerrar la app, sin fondos, timeout)
       // será interceptado y transformado en un pago exitoso para la presentación.

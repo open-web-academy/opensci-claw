@@ -58,7 +58,7 @@ export default function UploadPage() {
         (MiniKit as any).commands.verify({
           action: WORLD_ACTION_ID,
           signal: '',
-          verification_level: 'orb',
+          verification_level: 'device', // Cambiado a 'device' para que funcione sin Orb
         });
         
         // Timeout súper rápido (3 segundos) para que el bypass entre al rescate
@@ -66,7 +66,7 @@ export default function UploadPage() {
         setTimeout(() => { 
           (MiniKit as any).unsubscribe('verify', handleVerifyResponse);
           reject(new Error('timeout')); 
-        }, 3000);
+        }, 120000);
       });
 
       addLog('Verificación exitosa ✓');
@@ -74,11 +74,11 @@ export default function UploadPage() {
       setWalletAddress((MiniKit as any).walletAddress || '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7');
       setStep('upload');
     } catch (err: any) {
+      addLog(`REAL ERROR: ${err.message}`);
       addLog('Verifying zero-knowledge proof...');
       
       // HACKATHON BYPASS SUPREMO:
-      // Absolutamente cualquier error (cancelar el modal, error de la app, error de versión de minikit)
-      // activará el bypass para que la demostración en el video nunca se detenga.
+      // Absolutamente cualquier error activará el bypass para el video.
       addLog('Identity verified securely ✓');
       setWorldIdProof({ success: true, mock: true, bypass: true });
       setWalletAddress((MiniKit as any).walletAddress || '0x2eb655c6828d633e70c82b3b7eccac731d9b8ba7');
