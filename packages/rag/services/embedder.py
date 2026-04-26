@@ -27,11 +27,11 @@ def _embed(texts: List[str]) -> List[List[float]]:
     Generate embeddings via Google Gemini. On failure, raise — we never corrupt
     the vector store with random vectors (that was a landmine in previous code).
     """
-    # Probamos varios nombres posibles para los modelos de embedding de Google.
+    # Probamos nombres directos que suelen ser más estables en v1beta
     model_choices = [
-        "models/text-embedding-004", 
-        "models/embedding-001",
+        "models/text-embedding-004",
         "text-embedding-004",
+        "models/embedding-001",
         "embedding-001"
     ]
 

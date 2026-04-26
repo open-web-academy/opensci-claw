@@ -43,6 +43,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    from services.qa import run_telegram_bot
+    print("🚀 [Server] Starting SciGate RAG Engine...")
+    run_telegram_bot()
+
 
 class QueryRequest(BaseModel):
     paper_id: str

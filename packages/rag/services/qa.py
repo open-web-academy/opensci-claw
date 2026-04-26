@@ -291,5 +291,5 @@ def run_telegram_bot():
     except Exception as e:
         print(f"[Telegram] Failed to schedule bot: {e}")
 
-# Intentar arrancar el bot
-run_telegram_bot()
+# El arranque del bot se movió a main.py para asegurar que el event loop esté listo.
+# run_telegram_bot() 
