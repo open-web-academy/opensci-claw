@@ -52,10 +52,10 @@ class AutonomousX402Handler:
         print("------------------------------------------\n")
 
     async def get(self, url: str, headers: dict = None):
-        return await self.client.request("GET", url, headers=headers)
+        return await self.client.call("GET", url, headers=headers)
 
     async def post(self, url: str, json: dict = None, headers: dict = None):
-        return await self.client.request("POST", url, json=json, headers=headers)
+        return await self.client.call("POST", url, json=json, headers=headers)
 
 # Instancia única para usar en toda la aplicación (Singleton)
 x402_handler = AutonomousX402Handler()
