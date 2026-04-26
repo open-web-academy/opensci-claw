@@ -157,24 +157,28 @@ export default function ExplorePage() {
         type: 'sendTransaction'
       });
 
-      const response: any = await new Promise((resolve, reject) => {
-        const handlePayResponse = (payload: any) => {
-          (MiniKit as any).unsubscribe('pay', handlePayResponse);
-          fetch('/api/debug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Explore Pay Res', data: payload }) }).catch(() => {});
-          if (payload.status === 'error') reject(new Error(payload.error_code));
+       const response: any = await new Promise((resolve, reject) => {
+        const handleTxResponse = (payload: any) => {
+          (MiniKit as any).unsubscribe('send_transaction', handleTxResponse);
+          fetch('/api/debug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Explore Tx Res', data: payload }) }).catch(() => {});
+          if (payload.status === 'error') reject(new Error(payload.error_code || 'Transaction failed'));
           else resolve(payload);
         };
-        (MiniKit as any).subscribe('pay', handlePayResponse);
+        (MiniKit as any).subscribe('send_transaction', handleTxResponse);
 
-        // CAMBIO: Bypass de tipos para llamada directa
-        (MiniKit as any).commands.pay({
-          reference: paymentReference,
-          to: RECIPIENT,
-          tokens: [{ symbol: 'USDC' as any, token_amount: '10000' }], // 10000 = 0.01 USDC (6 decimales)
-          description: `Unlock Paper: ${selectedPaper.title || paperId}`,
+        // CAMBIO: Usamos sendTransaction para transferencia directa de USDC.
+        // Esto suele ser más confiable para ver los balances reales de World Chain.
+        (MiniKit as any).commands.sendTransaction({
+          transaction: [{
+            address: USDC_CONTRACT,
+            abi: USDC_ABI,
+            functionName: 'transfer',
+            args: [RECIPIENT, "10000"], // 0.01 USDC (6 decimales)
+          }],
         });
+        
         setTimeout(() => { 
-          (MiniKit as any).unsubscribe('pay', handlePayResponse);
+          (MiniKit as any).unsubscribe('send_transaction', handleTxResponse);
           reject(new Error('timeout')); 
         }, 120000);
       });
