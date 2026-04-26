@@ -69,7 +69,20 @@ async def answer_question(
         f"Paper excerpts:\n{context}"
     )
 
-    models_to_try = [model_name, "gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro"]
+    models_to_try = [
+        model_name,
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-pro",
+        "gemini-1.0-pro",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
+        "gemini-1.0-pro-latest",
+        "gemini-1.5-flash-001",
+        "gemini-1.5-flash-002",
+        "gemini-1.5-pro-001",
+        "gemini-1.5-pro-002"
+    ]
     answer = "Error interno: Todos los modelos de IA fallaron."
     model = None
     
@@ -153,7 +166,20 @@ async def answer_question_with_x402_skill(
 
     prompt = f"Question: {question}\n\nPaper excerpts:\n{context}"
 
-    models_to_try = [model_name, "gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro"]
+    models_to_try = [
+        model_name,
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-pro",
+        "gemini-1.0-pro",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
+        "gemini-1.0-pro-latest",
+        "gemini-1.5-flash-001",
+        "gemini-1.5-flash-002",
+        "gemini-1.5-pro-001",
+        "gemini-1.5-pro-002"
+    ]
     response = None
     chat = None
     

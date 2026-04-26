@@ -156,6 +156,13 @@ export async function handleQuery(paperId: string, question: string) {
       throw new Error(`Forcing fallback due to RAG 404: ${(data as any).detail}`);
     }
     
+    // HACKATHON FIX 2: Si el servidor devuelve un 200 OK pero la respuesta contiene nuestro string de
+    // error interno (significa que la API Key de Google de plano no funciona o no tiene saldo),
+    // interceptamos el mensaje y disparamos el fallback.
+    if ((data as any).answer?.includes('Todos los modelos de IA fallaron')) {
+      throw new Error("Forcing fallback due to complete Google API Key failure");
+    }
+    
     return { data, status };
   } catch (err: any) {
     console.warn(`[handleQuery] RAG engine failed on ${paperId}: ${err.message}. Using fallback answer...`);
