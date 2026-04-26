@@ -239,3 +239,47 @@ async def answer_question_with_x402_skill(
             break
 
     return _safe_text(response) or "Unable to generate answer."
+# --- TELEGRAM BOT INTEGRATION ---
+import logging
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+# Configuración básica de logs para el bot
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+async def telegram_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "⬡ SciGate Bot Active\n\nWelcome to the autonomous science network. "
+        "Send me a question about any academic paper in the catalog."
+    )
+
+async def telegram_handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_text = update.message.text
+    await update.message.reply_chat_action("typing")
+    
+    try:
+        # Usamos la misma lógica de RAG que la web
+        # Para el bot, usamos una búsqueda simplificada o el agente autónomo
+        answer = await answer_question(user_text, []) # Búsqueda sin fragmentos previos
+        await update.message.reply_text(answer)
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {str(e)}")
+
+def run_telegram_bot():
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not token:
+        print("[Telegram] Skipping bot start: TELEGRAM_BOT_TOKEN not found in .env")
+        return
+
+    print(f"[Telegram] Starting bot...")
+    application = Application.builder().token(token).build()
+    application.add_handler(CommandHandler("start", telegram_start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, telegram_handle_message))
+    
+    # Nota: run_polling es bloqueante. Para correr junto con el servidor web
+    # se suele usar un thread o una tarea asíncrona.
+    import threading
+    threading.Thread(target=application.run_polling, daemon=True).start()
+
+# Intentar arrancar el bot si el token existe
+run_telegram_bot()
