@@ -167,13 +167,11 @@ async def answer_question_with_x402_skill(
     prompt = f"Question: {question}\n\nPaper excerpts:\n{context}"
 
     models_to_try = [
-        model_name,
-        "models/gemini-1.5-flash",
-        "models/gemini-1.5-flash-8b",
-        "models/gemini-1.5-pro",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-8b",
-        "gemini-pro"
+        "models/gemini-2.0-flash",
+        "models/gemini-flash-latest",
+        "models/gemini-pro-latest",
+        "models/gemini-2.0-flash-lite",
+        "gemini-2.0-flash"
     ]
     response = None
     chat = None
