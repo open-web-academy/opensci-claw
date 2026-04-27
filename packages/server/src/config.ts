@@ -56,7 +56,11 @@ export const PAY_TO_ADDRESS_SOLANA = process.env.PAY_TO_ADDRESS_SOLANA ?? '';
 export const RECIPIENT = PAY_TO_ADDRESS;
 
 // ── On-chain registry ───────────────────────────────────────
-export const WORLD_CHAIN_RPC = process.env.WORLD_CHAIN_RPC ?? 'https://rpc.worldchain.dev';
+// Forzar Alchemy porque rpc.worldchain.dev está sufriendo caídas de DNS
+const envRpc = process.env.WORLD_CHAIN_RPC;
+export const WORLD_CHAIN_RPC = (envRpc && envRpc.includes('rpc.worldchain.dev')) 
+  ? 'https://worldchain-mainnet.g.alchemy.com/public' 
+  : (envRpc || 'https://worldchain-mainnet.g.alchemy.com/public');
 export const PAPER_REGISTRY_ADDRESS = (process.env.PAPER_REGISTRY_ADDRESS ?? '') as `0x${string}` | '';
 /**
  * Hot wallet used to call recordAccess() on-chain after paid accesses.
