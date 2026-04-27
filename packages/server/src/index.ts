@@ -337,38 +337,22 @@ const paymentMiddleware: MiddlewareHandler = async (c, next) => {
     // Case B: x402 Token (long string, not a hash)
     else if (proof.length > 100) {
       try {
-        console.log(`[payment] 🛡️ Checking x402 token structural validity...`);
-        
-        // REGLA DE ORO: Si el token tiene la firma del Agente (TransferWithAuthorization)
-        // o es lo suficientemente largo, lo dejamos pasar. 
-        // Evitamos fallos por discrepancias de URL (http vs https) en el proxy.
-        if (proof.includes('TransferWithAuthorization') || proof.includes('signature')) {
-          console.log(`[payment] ✅ Structural x402 token accepted (Agent Mode)`);
-          return next();
-        }
-
         const { payTo, amount } = await resolvePaymentTarget(paperId, kind);
         const requirements = build402(c.req.url, payTo, amount);
         
-        // Log details for debugging
-        console.log(`[payment] Requirements: ${JSON.stringify(requirements.accepts[0].mechanisms)}`);
+        console.log(`[payment] Strict verify for ${paperId}. URL: ${c.req.url}`);
+        const result = await (resourceServer as any).verifyPayment(proof, requirements.accepts);
         
-        let result = await (resourceServer as any).verifyPayment(proof, requirements.accepts);
-        
-        // REGLA DE ORO PARA EL AGENTE: Si el token tiene cara de ser un pago (EIP-712), 
-        // lo aceptamos. No podemos permitir que el bot falle por una discrepancia de URL.
-        if (!result.ok && (proof.includes('TransferWithAuthorization') || proof.length > 1000)) {
-          console.log(`[payment] 🛡️ Validating structural x402 token (Agent Mode)`);
-          result = { ok: true };
-        }
-
         if (result.ok) {
+          console.log(`[payment] ✅ x402 payment verified`);
           return next();
         } else {
-          console.warn(`[payment] ❌ x402 rejected:`, result);
+          console.warn(`[payment] ❌ Payment rejected:`, result);
+          // Return a 402 with the specific reason if possible
+          return c.json({ error: 'Payment verification failed', details: result }, 402);
         }
       } catch (err) {
-        console.warn(`[payment] x402 token verification error:`, err);
+        console.warn(`[payment] x402 verification error:`, err);
       }
     }
   } else {
@@ -413,45 +397,6 @@ app.get('/', (c) =>
 `)
 );
 
-// ── Free ─────────────────────────────────────────────────────
-app.get('/papers/:id/preview', async (c) => {
-  const paperId = c.req.param('id');
-  const { data, status } = await handlePreview(paperId);
-  return c.json(data, status as any);
-});
-
-app.route('/papers', papers);
-app.route('/authors', authors);
-
-// ── World ID RP signing ──────────────────────────────────────
-app.post('/api/world-id/rp-context', async (c) => {
-  try {
-    const { action, app_id } = await c.req.json();
-    const targetAppId = app_id || WORLD_APP_ID;
-
-    if (!WORLD_ID_SIGNING_KEY || !WORLD_ID_RP_ID || !targetAppId) {
-      return c.json({ error: 'RP configuration incomplete' }, 500);
-    }
-
-    const sigData = signRequest({
-      signingKeyHex: WORLD_ID_SIGNING_KEY,
-      app_id: targetAppId,
-      action: action,
-    } as any);
-
-    return c.json({
-      rp_id: WORLD_ID_RP_ID,
-      nonce: sigData.nonce,
-      signature: sigData.sig,
-      created_at: sigData.createdAt,
-      expires_at: sigData.expiresAt,
-    });
-  } catch (err: any) {
-    console.error('[WorldID] sign failed:', err);
-    return c.json({ error: err.message ?? 'signature failed' }, 500);
-  }
-});
-
 // ── Paid (reach here only after paymentMiddleware grants) ────
 app.post('/papers/:id/query', async (c) => {
   const paperId = c.req.param('id');
@@ -484,6 +429,45 @@ app.get('/papers/:id/data', async (c) => {
   const { data, status } = await handleData(c.req.param('id'));
   return c.json(data, status as any);
 });
+
+// ── World ID RP signing ──────────────────────────────────────
+app.post('/api/world-id/rp-context', async (c) => {
+  try {
+    const { action, app_id } = await c.req.json();
+    const targetAppId = app_id || WORLD_APP_ID;
+
+    if (!WORLD_ID_SIGNING_KEY || !WORLD_ID_RP_ID || !targetAppId) {
+      return c.json({ error: 'RP configuration incomplete' }, 500);
+    }
+
+    const sigData = signRequest({
+      signingKeyHex: WORLD_ID_SIGNING_KEY,
+      app_id: targetAppId,
+      action: action,
+    } as any);
+
+    return c.json({
+      rp_id: WORLD_ID_RP_ID,
+      nonce: sigData.nonce,
+      signature: sigData.sig,
+      created_at: sigData.createdAt,
+      expires_at: sigData.expiresAt,
+    });
+  } catch (err: any) {
+    console.error('[WorldID] sign failed:', err);
+    return c.json({ error: err.message ?? 'signature failed' }, 500);
+  }
+});
+
+// ── Free & Misc ──────────────────────────────────────────────
+app.get('/papers/:id/preview', async (c) => {
+  const paperId = c.req.param('id');
+  const { data, status } = await handlePreview(paperId);
+  return c.json(data, status as any);
+});
+
+app.route('/papers', papers);
+app.route('/authors', authors);
 
 // ── Agent proxy (SSE) ────────────────────────────────────────
 async function handleAgentRequest(c: any, mode: 'query' | 'full') {

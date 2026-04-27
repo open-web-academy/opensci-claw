@@ -116,9 +116,16 @@ class AutonomousX402Handler:
                     new_headers["PAYMENT-SIGNATURE"] = proof_str
                     
                     print(f"🚀 x402: Re-intentando con comprobante (headers duales)...")
-                    return await client.request(method, url, headers=new_headers, json=kwargs.get("json"), params=kwargs.get("params"))
+                    retry_resp = await client.request(method, url, headers=new_headers, json=kwargs.get("json"), params=kwargs.get("params"))
+                    
+                    if retry_resp.status_code == 402:
+                        print(f"❌ x402: El servidor rechazó el pago. Esto ocurre si la billetera no tiene fondos suficientes o el facilitador no aprobó la transacción.")
+                    elif retry_resp.status_code == 200:
+                        print(f"✅ x402: Pago aceptado y recurso liberado.")
+                        
+                    return retry_resp
                 except Exception as e:
-                    print(f"❌ x402: Error al generar pago: {e}")
+                    print(f"❌ x402: Error al procesar pago: {e}")
                     return resp
             
             return resp
