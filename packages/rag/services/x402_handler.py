@@ -4,58 +4,26 @@ import httpx
 from eth_account import Account
 from x402 import x402Client, parse_payment_required
 from x402.mechanisms.evm.exact import ExactEvmScheme
-from x402.mechanisms.svm.exact import ExactSvmScheme
 from x402.mechanisms.evm.signers import EthAccountSigner
-from x402.mechanisms.svm.signers import KeypairSigner
-
-# Soporte para carga de llaves de Solana
-try:
-    from solders.keypair import Keypair
-except ImportError:
-    Keypair = None
 
 class AutonomousX402Handler:
     def __init__(self):
         print("\n🛰️  SciGate: Inicializando Sistemas de Pago...")
         self.client = x402Client()
 
-        # 2. Configuración World Chain (EVM)
+        # 1. Configuración World Chain (EVM)
         evm_key = os.getenv("RAG_AGENT_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
         if evm_key:
             try:
                 account = Account.from_key(evm_key)
-                # Intentamos pasar name y version directamente (estilo v2.8)
-                try:
-                    scheme = ExactEvmScheme(
-                        signer=EthAccountSigner(account),
-                        name="SciGate",
-                        version="1"
-                    )
-                except TypeError:
-                    # Si falla, intentamos el formato antiguo
-                    scheme = ExactEvmScheme(signer=EthAccountSigner(account))
-                
-                self.client.register("eip155:480", scheme)
+                self.client.register("eip155:480", ExactEvmScheme(signer=EthAccountSigner(account)))
                 print(f"✅ World Chain ID: {account.address}")
             except Exception as e:
                 print(f"❌ Error en Llave EVM: {str(e)}")
 
-        # 3. Configuración Solana (SVM)
-        sol_key = os.getenv("RAG_AGENT_SOLANA_KEY")
-        if sol_key and Keypair:
-            try:
-                kp = Keypair.from_base58_string(sol_key)
-                svm_scheme = ExactSvmScheme(signer=KeypairSigner(kp))
-                # Registramos ambos alias para evitar el "Unsupported SVM network"
-                self.client.register("solana:mainnet", svm_scheme)
-                self.client.register("solana:5eykt4UsFv8P8NJdTREpY1vzqAQZSSfL", svm_scheme)
-                print(f"✅ Solana Address: {kp.pubkey()}")
-            except Exception as e:
-                print(f"❌ Error en Llave Solana: {str(e)}")
         print("------------------------------------------\n")
 
     async def _request(self, method: str, url: str, **kwargs):
-        # Aseguramos que kwargs['headers'] sea un dict
         if "headers" not in kwargs or kwargs["headers"] is None:
             kwargs["headers"] = {}
         else:
@@ -74,29 +42,28 @@ class AutonomousX402Handler:
                 )
                 
                 if not payment_req:
-                    print(f"⚠️ x402: Recibí 402 sin header de pago. Headers: {list(resp.headers.keys())}")
+                    print(f"⚠️ x402: Recibí 402 sin header.")
                     return resp 
                 
                 print(f"🤝 x402: Negociando pago para {url}...")
                 try:
                     import json
-                    # Intentar parsear como JSON si el servidor lo mandó así
                     try:
                         req_data = json.loads(payment_req)
                     except:
-                        req_data = payment_req # Si no es JSON, usar el texto original
+                        req_data = payment_req
                     
-                    # Parsear y generar el pago
-                    # Parsear y generar el pago
                     req_obj = parse_payment_required(req_data)
                     
-                    # Generar el payload de pago usando el cliente x402
-                    payment_proof = await self.client.create_payment_payload(req_obj)
+                    # FIX CRITICO: Inyectar parámetros EIP-712
+                    if hasattr(req_obj, "extra"):
+                        req_obj.extra = req_obj.extra or {}
+                        req_obj.extra["name"] = "SciGate"
+                        req_obj.extra["version"] = "1"
                     
-                    # Convertir el comprobante a string (algunas versiones devuelven un objeto)
+                    payment_proof = await self.client.create_payment_payload(req_obj)
                     proof_str = str(payment_proof)
                     
-                    # 3. Re-intentar con el header de Autorización x402
                     new_headers = kwargs["headers"].copy()
                     new_headers["Authorization"] = f"x402 {proof_str}"
                     
@@ -104,8 +71,6 @@ class AutonomousX402Handler:
                     return await client.request(method, url, headers=new_headers, json=kwargs.get("json"), params=kwargs.get("params"))
                 except Exception as e:
                     print(f"❌ x402: Error al generar pago: {e}")
-                    import traceback
-                    traceback.print_exc() # Esto nos dirá exactamente en qué línea falló
                     return resp
             
             return resp
