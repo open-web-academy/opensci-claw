@@ -74,47 +74,79 @@ class AutonomousX402Handler:
                     except:
                         req_data = payment_req
                     
-                    # --- EL PLAN C: INYECCIÓN EN EL JSON ORIGINAL ---
-                    print(f"🛠️ x402: Inyectando metadatos en el JSON original...")
-                    try:
-                        if not isinstance(req_data, dict):
-                            req_data = json.loads(req_data) if isinstance(req_data, str) else {}
+                    # Extraer requerimientos del JSON (usando x402 standard)
+                    accepts = req_data.get("accepts", [])
+                    if not accepts and "requirements" in req_data:
+                        accepts = req_data["requirements"]
                         
-                        # Asegurar versión de x402
-                        if "x402Version" not in req_data:
-                            req_data["x402Version"] = "2.0.0"
-                            
-                        if "requirements" in req_data:
-                            for req in req_data["requirements"]:
-                                # Inyectar en el 'extra' del requerimiento individual
-                                if "extra" not in req or req["extra"] is None:
-                                    req["extra"] = {}
-                                req["extra"]["name"] = "USD Coin"
-                                req["extra"]["version"] = "2"
-                                
-                        # También inyectar en el nivel superior por si acaso
-                        if "extra" not in req_data or req_data["extra"] is None:
-                            req_data["extra"] = {}
-                        req_data["extra"]["name"] = "USD Coin"
-                        req_data["extra"]["version"] = "2"
+                    if not accepts:
+                        raise ValueError("No se encontraron requerimientos de pago")
                         
-                    except Exception as e:
-                        print(f"⚠️ x402: Error preparando JSON: {e}")
-
-                    # Ahora parseamos el objeto ya con los datos inyectados
-                    req_obj = parse_payment_required(req_data)
+                    req = accepts[0]
+                    amount = int(req.get("amount", 0))
+                    pay_to = req.get("payTo", "")
                     
-                    print(f"🚀 x402: Llamando a create_payment_payload...")
-                    payment_proof = await self.client.create_payment_payload(req_obj)
-                    proof_str = str(payment_proof)
+                    if not amount or not pay_to:
+                        raise ValueError("Faltan datos de monto o destinatario")
+                    
+                    from web3 import Web3
+                    # Usar Alchemy porque rpc.worldchain.dev está fallando DNS
+                    w3 = Web3(Web3.HTTPProvider("https://worldchain-mainnet.g.alchemy.com/public"))
+                    
+                    evm_key = os.getenv("RAG_AGENT_PRIVATE_KEY") or os.getenv("PRIVATE_KEY")
+                    if not evm_key:
+                        raise ValueError("No hay llave privada configurada en RAG_AGENT_PRIVATE_KEY")
+                        
+                    account = w3.eth.account.from_key(evm_key)
+                    
+                    usdc_address = w3.to_checksum_address("0x79A02482A880bCE3F13e09Da970dC34db4CD24d1")
+                    pay_to_address = w3.to_checksum_address(pay_to)
+                    
+                    print(f"🚀 Ejecutando transferencia autónoma (Web3) de {amount} USDC a {pay_to_address}...")
+                    
+                    erc20_abi = [
+                        {
+                            "constant": False,
+                            "inputs": [
+                                {"name": "_to", "type": "address"},
+                                {"name": "_value", "type": "uint256"}
+                            ],
+                            "name": "transfer",
+                            "outputs": [{"name": "", "type": "bool"}],
+                            "type": "function"
+                        }
+                    ]
+                    
+                    usdc_contract = w3.eth.contract(address=usdc_address, abi=erc20_abi)
+                    nonce = w3.eth.get_transaction_count(account.address)
+                    
+                    tx = usdc_contract.functions.transfer(pay_to_address, amount).build_transaction({
+                        'chainId': 480,
+                        'gas': 100000,
+                        'maxFeePerGas': w3.to_wei('0.005', 'gwei'),
+                        'maxPriorityFeePerGas': w3.to_wei('0.001', 'gwei'),
+                        'nonce': nonce,
+                    })
+                    
+                    signed_tx = w3.eth.account.sign_transaction(tx, private_key=evm_key)
+                    # Compatible con eth_account v5 y v6
+                    raw_tx = getattr(signed_tx, 'raw_transaction', getattr(signed_tx, 'rawTransaction', None))
+                    
+                    tx_hash_bytes = w3.eth.send_raw_transaction(raw_tx)
+                    tx_hash = w3.to_hex(tx_hash_bytes)
+                    print(f"✅ Transacción enviada a World Chain! Hash: {tx_hash}")
+                    
+                    print("⏳ Esperando confirmación en blockchain (esto puede tomar unos segundos)...")
+                    w3.eth.wait_for_transaction_receipt(tx_hash_bytes, timeout=120)
+                    print("✅ Transacción confirmada.")
+                    
+                    proof_str = tx_hash
                     
                     new_headers = kwargs["headers"].copy()
                     new_headers["Authorization"] = f"x402 {proof_str}"
-                    
-                    # Compatibilidad con el middleware manual de SciGate
                     new_headers["x-payment-proof"] = proof_str
                     new_headers["PAYMENT-SIGNATURE"] = proof_str
-                    
+                
                     print(f"🚀 x402: Re-intentando con comprobante (headers duales)...")
                     retry_resp = await client.request(method, url, headers=new_headers, json=kwargs.get("json"), params=kwargs.get("params"))
                     
