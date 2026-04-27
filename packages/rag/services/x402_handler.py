@@ -11,15 +11,15 @@ from x402.mechanisms.evm.signers import EthAccountSigner
 original_sign = ExactEvmScheme._sign_authorization
 
 def patched_sign(self, authorization, requirements):
-    # Inyectamos a la fuerza antes de llamar a la función original
+    # Inyectamos el EIP-712 domain real de USDC en World Chain para que la firma sea válida
     if hasattr(requirements, "extra"):
         requirements.extra = requirements.extra or {}
-        requirements.extra["name"] = "SciGate"
-        requirements.extra["version"] = "1"
+        requirements.extra["name"] = "USD Coin"
+        requirements.extra["version"] = "2"
     elif isinstance(requirements, dict):
         if "extra" not in requirements: requirements["extra"] = {}
-        requirements["extra"]["name"] = "SciGate"
-        requirements["extra"]["version"] = "1"
+        requirements["extra"]["name"] = "USD Coin"
+        requirements["extra"]["version"] = "2"
     
     return original_sign(self, authorization, requirements)
 
@@ -89,14 +89,14 @@ class AutonomousX402Handler:
                                 # Inyectar en el 'extra' del requerimiento individual
                                 if "extra" not in req or req["extra"] is None:
                                     req["extra"] = {}
-                                req["extra"]["name"] = "SciGate"
-                                req["extra"]["version"] = "1"
+                                req["extra"]["name"] = "USD Coin"
+                                req["extra"]["version"] = "2"
                                 
                         # También inyectar en el nivel superior por si acaso
                         if "extra" not in req_data or req_data["extra"] is None:
                             req_data["extra"] = {}
-                        req_data["extra"]["name"] = "SciGate"
-                        req_data["extra"]["version"] = "1"
+                        req_data["extra"]["name"] = "USD Coin"
+                        req_data["extra"]["version"] = "2"
                         
                     except Exception as e:
                         print(f"⚠️ x402: Error preparando JSON: {e}")
