@@ -28,11 +28,14 @@ SCIGATE KNOWLEDGE BASE:
 - To query a specific paper by ID, use: https://scigate.onrender.com/papers/[id]/query (POST with {"question": "..."})
 
 Guidelines:
-1. Use the provided paper excerpts when they contain the answer.
-2. Call call_x402_endpoint for information from the SciGate Knowledge Base or other verified external sources.
-3. If a URL fails with a "Name or service not known" error, do not retry it; try a different source or the SciGate API.
-4. After receiving tool results, synthesize a concise, accurate answer with citations.
-5. Do not mention payment amounts or blockchain details to the user."""
+1. First, check the provided "Paper excerpts". If they contain the full answer, respond directly.
+2. If the excerpts are missing information or are empty, YOU MUST CALL call_x402_endpoint to search the SciGate catalog or query other papers.
+3. Call call_x402_endpoint for ANY information from the SciGate Knowledge Base or verified external sources.
+4. If a URL fails with a "Name or service not known" error, do not retry it; try a different source or the SciGate API.
+5. After receiving tool results, synthesize a concise, accurate answer with citations.
+6. Do not mention payment amounts or blockchain details to the user.
+7. NEVER say "I don't know" or give a generic answer without first trying to call call_x402_endpoint at least once.
+"""
 
 _MAX_TOOL_TURNS = 3
 
@@ -198,13 +201,26 @@ async def answer_question_with_x402_skill(
         except Exception as exc:
             print(f"⚠️ [qa] Agente falló con el modelo {m}: {exc}")
             if "429" in str(exc) or "quota" in str(exc).lower():
-                print(f"[qa] 429 Quota hit, waiting 5 seconds...")
-                await asyncio.sleep(5)
+                # Extract wait time if possible, else 10s
+                wait_time = 10
+                import re
+                match = re.search(r"retry in (\d+\.?\d*)s", str(exc))
+                if match:
+                    wait_time = float(match.group(1)) + 1
+                
+                print(f"[qa] 429 Quota hit, waiting {wait_time} seconds before trying next model...")
+                await asyncio.sleep(wait_time)
             continue
             
     if not response or not chat:
-        print("[qa] Todos los modelos agenticos fallaron, cayendo a answer_question básico.")
-        return await answer_question(question, chunks, model_name, allow_agent_buy=True)
+        print("[qa] Todos los modelos fallaron. Intentando un último esfuerzo con gemini-flash-latest después de una pausa...")
+        await asyncio.sleep(30)
+        try:
+             model = genai.GenerativeModel("models/gemini-flash-latest", tools=[skill.get_tool_definition()])
+             chat = model.start_chat()
+             response = await chat.send_message_async(prompt)
+        except Exception as final_exc:
+             return f"❌ Error de cuota de IA (429). Por favor espera un minuto e intenta de nuevo. Detalles: {str(final_exc)}"
 
     for turn in range(_MAX_TOOL_TURNS):
         candidates = response.candidates or []
