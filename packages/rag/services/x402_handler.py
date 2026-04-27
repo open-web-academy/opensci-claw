@@ -65,8 +65,15 @@ class AutonomousX402Handler:
                 
                 print(f"🤝 x402: Negociando pago para {url}...")
                 try:
+                    import json
+                    # Intentar parsear como JSON si el servidor lo mandó así
+                    try:
+                        req_data = json.loads(payment_req)
+                    except:
+                        req_data = payment_req # Si no es JSON, usar el texto original
+                    
                     # Parsear y generar el pago
-                    req_obj = parse_payment_required(payment_req)
+                    req_obj = parse_payment_required(req_data)
                     payment_proof = await self.client.create_payment_payload(req_obj)
                     
                     # Convertir el comprobante a string (algunas versiones devuelven un objeto)
