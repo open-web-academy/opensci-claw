@@ -53,29 +53,22 @@ class AutonomousX402Handler:
                     except:
                         req_data = payment_req
                     
+                    # --- EL PLAN C: INYECCIÓN EN EL JSON ORIGINAL ---
+                    print(f"🛠️ x402: Inyectando metadatos en el JSON original...")
+                    try:
+                        if isinstance(req_data, dict) and "requirements" in req_data:
+                            for req in req_data["requirements"]:
+                                if "extra" not in req or not req["extra"]:
+                                    req["extra"] = {}
+                                req["extra"]["name"] = "SciGate"
+                                req["extra"]["version"] = "1"
+                    except Exception as e:
+                        print(f"⚠️ x402: Error inyectando en JSON: {e}")
+
+                    # Ahora parseamos el objeto ya con los datos inyectados
                     req_obj = parse_payment_required(req_data)
                     
-                    # --- EL FIX DEFINITIVO PARA EIP-712 ---
-                    print(f"🛠️ x402: Inyectando metadatos en todos los requerimientos...")
-                    domain_data = {"name": "SciGate", "version": "1"}
-                    
-                    # 1. Inyectar en el objeto principal
-                    try: req_obj.extra = domain_data
-                    except: pass
-                    
-                    # 2. Inyectar en cada requerimiento individual (esto es lo que faltaba)
-                    if hasattr(req_obj, "requirements"):
-                        for req in req_obj.requirements:
-                            try:
-                                req.extra = domain_data
-                            except:
-                                try:
-                                    # Para modelos inmutables de Pydantic
-                                    req_idx = req_obj.requirements.index(req)
-                                    req_obj.requirements[req_idx] = req.model_copy(update={"extra": domain_data})
-                                except:
-                                    pass
-                    
+                    print(f"🚀 x402: Llamando a create_payment_payload...")
                     payment_proof = await self.client.create_payment_payload(req_obj)
                     proof_str = str(payment_proof)
                     
