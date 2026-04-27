@@ -47,8 +47,12 @@ class AutonomousX402Handler:
             
             # 2. Si es 402, negociar el pago
             if resp.status_code == 402:
-                # Intentamos obtener el header de varias formas (case-insensitive)
-                payment_req = resp.headers.get("X-402-Payment-Required") or resp.headers.get("x-402-payment-required")
+                # Intentamos obtener el header de varias formas (algunos proxies quitan el X- o cambian el nombre)
+                payment_req = (
+                    resp.headers.get("X-402-Payment-Required") or 
+                    resp.headers.get("x-402-payment-required") or
+                    resp.headers.get("payment-required")
+                )
                 
                 if not payment_req:
                     print(f"⚠️ x402: Recibí 402 pero no encontré el header 'X-402-Payment-Required'. Headers: {list(resp.headers.keys())}")
