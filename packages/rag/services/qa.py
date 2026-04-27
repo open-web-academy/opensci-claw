@@ -177,11 +177,9 @@ async def answer_question_with_x402_skill(
     prompt = f"Question: {question}\n\nPaper excerpts:\n{context}"
 
     models_to_try = [
-        "models/gemini-1.5-flash",
-        "models/gemini-1.5-flash-latest",
-        "models/gemini-pro-latest",
-        "models/gemini-1.5-pro",
+        "models/gemini-flash-latest",
         "models/gemini-2.0-flash",
+        "models/gemini-pro-latest",
     ]
     response = None
     chat = None
@@ -199,6 +197,9 @@ async def answer_question_with_x402_skill(
             break
         except Exception as exc:
             print(f"⚠️ [qa] Agente falló con el modelo {m}: {exc}")
+            if "429" in str(exc) or "quota" in str(exc).lower():
+                print(f"[qa] 429 Quota hit, waiting 5 seconds...")
+                await asyncio.sleep(5)
             continue
             
     if not response or not chat:
