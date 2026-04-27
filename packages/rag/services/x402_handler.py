@@ -56,14 +56,29 @@ class AutonomousX402Handler:
                     # --- EL PLAN C: INYECCIÓN EN EL JSON ORIGINAL ---
                     print(f"🛠️ x402: Inyectando metadatos en el JSON original...")
                     try:
-                        if isinstance(req_data, dict) and "requirements" in req_data:
+                        if not isinstance(req_data, dict):
+                            req_data = json.loads(req_data) if isinstance(req_data, str) else {}
+                        
+                        # Asegurar versión de x402
+                        if "x402Version" not in req_data:
+                            req_data["x402Version"] = "2.0.0"
+                            
+                        if "requirements" in req_data:
                             for req in req_data["requirements"]:
-                                if "extra" not in req or not req["extra"]:
+                                # Inyectar en el 'extra' del requerimiento individual
+                                if "extra" not in req or req["extra"] is None:
                                     req["extra"] = {}
                                 req["extra"]["name"] = "SciGate"
                                 req["extra"]["version"] = "1"
+                                
+                        # También inyectar en el nivel superior por si acaso
+                        if "extra" not in req_data or req_data["extra"] is None:
+                            req_data["extra"] = {}
+                        req_data["extra"]["name"] = "SciGate"
+                        req_data["extra"]["version"] = "1"
+                        
                     except Exception as e:
-                        print(f"⚠️ x402: Error inyectando en JSON: {e}")
+                        print(f"⚠️ x402: Error preparando JSON: {e}")
 
                     # Ahora parseamos el objeto ya con los datos inyectados
                     req_obj = parse_payment_required(req_data)
