@@ -20,3 +20,6 @@ solders>=0.21.0
 # Supabase vector store
 supabase==2.11.0
 pgvector>=0.2.0
+
+# Telegram Bot
+python-telegram-bot>=21.0

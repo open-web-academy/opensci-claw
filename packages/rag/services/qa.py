@@ -1,5 +1,9 @@
 import os
+import logging
+import asyncio
 from typing import Any
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import google.generativeai as genai
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
@@ -17,14 +21,18 @@ DYNAMICS:
 _X402_TOOL_SYSTEM_PROMPT = """You are SciGate, an autonomous AI research assistant.
 
 You have access to call_x402_endpoint — use it to query any x402-protected academic API.
-The x402 protocol handles payment (USDC on World Chain or Solana) automatically.
+The x402 protocol handles payment (USDC on World Chain) automatically.
+
+SCIGATE KNOWLEDGE BASE:
+- To search the SciGate catalog, use: https://scigate.onrender.com/papers/search?q=[query]
+- To query a specific paper by ID, use: https://scigate.onrender.com/papers/[id]/query (POST with {"question": "..."})
 
 Guidelines:
 1. Use the provided paper excerpts when they contain the answer.
-2. Call call_x402_endpoint for information from external data sources when needed.
-3. After receiving tool results, synthesize a concise, accurate answer with citations
-   (paper IDs, URLs, page numbers).
-4. Do not mention payment amounts or blockchain details to the user."""
+2. Call call_x402_endpoint for information from the SciGate Knowledge Base or other verified external sources.
+3. If a URL fails with a "Name or service not known" error, do not retry it; try a different source or the SciGate API.
+4. After receiving tool results, synthesize a concise, accurate answer with citations.
+5. Do not mention payment amounts or blockchain details to the user."""
 
 _MAX_TOOL_TURNS = 3
 
@@ -37,13 +45,23 @@ def _safe_text(response: Any) -> str:
     We surface a clear string rather than 500-ing the endpoint.
     """
     try:
-        return response.text or ""
+        if not response:
+            return "[No response from model]"
+        # Check if response has valid candidates
+        if hasattr(response, "candidates") and response.candidates:
+            if response.candidates[0].content.parts:
+                return response.text or ""
+        return "[Model returned no candidates or empty content]"
     except Exception as e:
-        print(f"[qa] response.text raised: {e}")
-        block_reason = getattr(getattr(response, "prompt_feedback", None), "block_reason", None)
-        if block_reason:
-            return f"[Model refused: {block_reason}]"
-        return "[Model returned no text]"
+        print(f"[qa] _safe_text defensive catch: {e}")
+        try:
+            # Try to get feedback reason
+            feedback = getattr(response, "prompt_feedback", None)
+            if feedback and hasattr(feedback, "block_reason"):
+                return f"[Model blocked: {feedback.block_reason}]"
+        except:
+            pass
+        return f"[Error extracting text: {str(e)}]"
 
 
 async def answer_question(
@@ -159,11 +177,11 @@ async def answer_question_with_x402_skill(
     prompt = f"Question: {question}\n\nPaper excerpts:\n{context}"
 
     models_to_try = [
-        "models/gemini-2.0-flash",
-        "models/gemini-flash-latest",
+        "models/gemini-1.5-flash",
+        "models/gemini-1.5-flash-latest",
         "models/gemini-pro-latest",
-        "models/gemini-2.0-flash-lite",
-        "gemini-2.0-flash"
+        "models/gemini-1.5-pro",
+        "models/gemini-2.0-flash",
     ]
     response = None
     chat = None
@@ -225,10 +243,6 @@ async def answer_question_with_x402_skill(
 
     return _safe_text(response) or "Unable to generate answer."
 # --- TELEGRAM BOT INTEGRATION ---
-import logging
-import asyncio
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # Configuración básica de logs para el bot
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
