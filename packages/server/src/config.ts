@@ -38,8 +38,7 @@ export const BASE = 'eip155:8453' as const;
  */
 export const SOLANA = 'solana:5eykt4UsFv8P8NJdTREpY1vzqAQZSSfL' as const;
 
-// ── USDC addresses (native) ─────────────────────────────────
-export const WORLD_USDC = '0x79A02482A880bCe3F13E09da970dC34dB4cD24D1';
+export const WORLD_USDC = '0x79A02482A880bCE3F13e09Da970dC34db4CD24d1';
 export const BASE_USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 export const SOLANA_USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
