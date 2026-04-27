@@ -56,20 +56,25 @@ class AutonomousX402Handler:
                     req_obj = parse_payment_required(req_data)
                     
                     # --- EL FIX DEFINITIVO PARA EIP-712 ---
-                    print(f"🛠️ x402: Inyectando metadatos de dominio...")
+                    print(f"🛠️ x402: Inyectando metadatos en todos los requerimientos...")
                     domain_data = {"name": "SciGate", "version": "1"}
                     
-                    try:
-                        # Intento 1: Atributo directo
-                        req_obj.extra = domain_data
-                    except:
-                        try:
-                            # Intento 2: Estilo Pydantic (si existe model_copy)
-                            req_obj = req_obj.model_copy(update={"extra": domain_data})
-                        except:
-                            # Intento 3: Si es un dict, simplemente añadirlo
-                            if isinstance(req_obj, dict):
-                                req_obj["extra"] = domain_data
+                    # 1. Inyectar en el objeto principal
+                    try: req_obj.extra = domain_data
+                    except: pass
+                    
+                    # 2. Inyectar en cada requerimiento individual (esto es lo que faltaba)
+                    if hasattr(req_obj, "requirements"):
+                        for req in req_obj.requirements:
+                            try:
+                                req.extra = domain_data
+                            except:
+                                try:
+                                    # Para modelos inmutables de Pydantic
+                                    req_idx = req_obj.requirements.index(req)
+                                    req_obj.requirements[req_idx] = req.model_copy(update={"extra": domain_data})
+                                except:
+                                    pass
                     
                     payment_proof = await self.client.create_payment_payload(req_obj)
                     proof_str = str(payment_proof)
